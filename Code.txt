@@ -1,0 +1,2994 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace WindowsFormsApp1
+{  
+    public partial class Form1 : Form
+    {
+
+        //Kategori Ekle -> ekle butonuna basýlýnca yollancak..
+            TextBox kategoriGir = null;
+            TextBox isimAl = null;
+            TextBox markaAl = null;
+            TextBox modelAl = null;
+            TextBox stokSayýsýAl = null;
+            TextBox maliyetAl = null;
+            TextBox satýþFiyatýAl = null;
+            TextBox özellik1 = null;
+            TextBox özellik2 = null;
+            TextBox özellik3 = null;
+            TextBox özellik4 = null;
+            TextBox özellik5 = null;
+            TextBox özellik6 = null;
+        //Kaydol
+            TextBox kullanýcýAdý;
+            TextBox þifre;
+            TextBox yaþ;
+            TextBox maaþ;
+            TextBox cinsiyet;
+            TextBox þehir;
+        //GÝRÝÞ YAP
+        TextBox þifreGir;
+        TextBox ID;
+        TextBox aramaCubugu;
+        //GÝRÝÞ YAPILDIÐI AN ATANIYOR
+        string mevcutKullanýcý;
+
+
+        List<List<String>> arananÝçKelime;
+
+
+        Hashtable kategoriler;
+        Hashtable urunAcýklamasý;
+        List<string> sýralýKategoriler = new List<string>();
+        
+
+        List<List<String>> bulunanÜrünler = new List<List<string>>();
+        List<List<String>> tümÜrünListesi = new List<List<string>>();
+        List<List<String>> tümÜrünlerVeOzellikleri = null;
+        string silinenUrunKategorisi = null;
+        public Form1()
+        {
+            InitializeComponent();
+
+            kategoriler = new Hashtable();
+
+
+            
+
+
+
+
+            StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt");
+            string nextline = reader.ReadLine();
+            while (nextline != null)
+            {
+                if(!nextline.Contains(" "))
+                {
+                    sýralýKategoriler.Add(nextline);
+                    Tree agac = new Tree();
+                    agac = agacHazýrla(nextline);
+                    kategoriler.Add(nextline,agac);
+                }
+                nextline = reader.ReadLine();
+            }
+            reader.Close();
+            urunAcýklamasýHashTableHazýrla();
+            
+            textBox1.ForeColor = System.Drawing.Color.Gray;
+            textBox1.Text = "Ne aramýþtýnýz?                                                                                                                 ??"; 
+             
+
+        }
+
+       
+        //BÝZÝM YAZDIÐIMIZ METOTLAR
+        
+        public void urunAcýklamasýHashTableHazýrla()
+        {
+            urunAcýklamasý = new Hashtable();
+
+            try
+            {
+                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                {
+                    List<TreeNode> HashValue;
+                    string nextline = sr.ReadLine();
+                    while (nextline != null)
+                    {
+                        if (kategoriler.Contains(nextline))
+                        {
+                            nextline = sr.ReadLine();
+                        }
+
+                        HashValue = new List<TreeNode>();
+                        string[] urunAcýklamasýÝcerenListe = nextline.Split(' ');
+
+                        for (int i = 0; i < urunAcýklamasýÝcerenListe.Length; i++)
+                        {
+                            if (urunAcýklamasý.ContainsKey(urunAcýklamasýÝcerenListe[i])) {
+                                continue;
+                            }
+                            HashValue = new List<TreeNode>();
+                            urunAcýklamasý.Add(urunAcýklamasýÝcerenListe[i], HashValue);
+
+                        }
+                        nextline = sr.ReadLine();
+                    }
+                    
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(e.Message);
+            }
+
+            Hashtable urunAcýklamasýKopya = new Hashtable(urunAcýklamasý);
+            List<TreeNode> treeNodeList = new List<TreeNode>();
+           foreach(Tree agac in kategoriler.Values)
+            {
+                agac.toStack(agac.getRoot(), treeNodeList);
+            }
+
+           foreach(string aranankelime in urunAcýklamasýKopya.Keys)
+            {
+                List<List<String>> kelimeninGectigiTreeNode = new List<List<String>>();
+                TreeNode listIcýndeki = new TreeNode();
+                List<string> NodeIcýndeki = new List<string>();
+                
+                for(int i = 0; i < treeNodeList.Count; i++)
+                {
+                    listIcýndeki = treeNodeList[i];
+                    for(int k = 0; k < listIcýndeki.data.Count; k++)
+                    {
+                        NodeIcýndeki = listIcýndeki.data[k];
+                        if (NodeIcýndeki.Contains(aranankelime))
+                        {
+                            kelimeninGectigiTreeNode.Add(listIcýndeki.data[k]);
+                        }
+                    }
+                }
+                urunAcýklamasý[aranankelime] = kelimeninGectigiTreeNode;
+            }
+
+            }  //DONE!
+
+        private Tree agacHazýrla(string kategori) 
+        {
+            
+            
+                int counter;
+                Tree temp = new Tree() ;
+                List<List<String>> dýþListe = null;
+                
+                counter = 0;
+
+                try
+                {
+                    using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                    {
+                        string nextLine = "";
+                        string txtKategorisi = "";
+                        while (kategori != txtKategorisi)//baþlýk gibi olan kategoriler eþleþmediði sürece sonraki line a gidecek
+                        {
+                            txtKategorisi = sr.ReadLine();
+                        }
+                        while (kategori == txtKategorisi)
+                        {  //kategoriler eþitlenince
+                            dýþListe = new List<List<String>>(); // bu dizüstü mesela bunun içine asuslar falan atýlcak daha sonra bu bilgisayar aðacýna atýlcak sonra deðiþcek tablet olcak tablet içlistesi buna atýlcak bu bilgisayar aðacýna atýlcak
+                            List<String> içListe = null;
+                            counter++;
+                            if (counter == 1)
+                            {
+                                nextLine = sr.ReadLine();
+                            }
+                            
+                            string[] wordByWord = nextLine.Split(' ');
+                            string kategorizeEdenKey = wordByWord[0];
+
+                        while (kategorizeEdenKey == wordByWord[0])
+                            { //dýþlisteyi kategorize etmeye yarýyo iþte eðer bidahaki satýrda dizüstü varsa demek ki ayný dýþ listenin içine atýlacak bir iç liste yapýlmasý lazým
+
+                                içListe = new List<String>();
+
+                                for (int i = 0; i < wordByWord.Length; i++)
+                                {
+                                    içListe.Add(wordByWord[i]);
+                                }
+
+                                List<String> içListeKopya = new List<String>();
+                                for (int i = 0; i < içListe.Count; i++)
+                                {
+                                    içListeKopya.Add(içListe[i]);
+                                }
+
+                                dýþListe.Add(içListeKopya);
+                                içListe.Clear();
+                                nextLine = sr.ReadLine();
+                                if(nextLine == null)
+                                {
+                                break;
+                                }
+                                if(!nextLine.Contains(" "))
+                                {
+                                txtKategorisi = nextLine;
+                                break;
+                                 }
+                                
+                                kategorizeEdenKey = wordByWord[0];
+                                wordByWord = nextLine.Split(' ');
+                            }
+                        temp.insert(dýþListe); // aðaca dýþ listeyi atýyo
+                        
+                    }
+                    sr.Close();
+                }
+                
+                return temp;
+            }
+                
+                catch (Exception e)
+                {
+
+                    Console.WriteLine("The file could not be read:");
+                    Console.WriteLine(e.Message);
+                    return temp;
+                }
+            return temp;
+        
+        } //rpogram baþlatýldýðýnda hashtable içindeki aðaçlarý dosyadan dolduruyor
+       
+         
+
+        public Heap heapHazýrla(Hashtable kategoriler,string alýnanKategori)
+        {
+            Heap heap = null;
+            //alýnan kategori textboxtan çekilip metoda parametre yollancak
+            //foreachle kategorilerin keylerini dolaþýp alýnankategori kategorilerin keyine eþit olunca çýkýp iþlemleri yapcak
+            foreach (string kategori in kategoriler.Keys)
+            {
+               
+                if (alýnanKategori == kategori)
+                {
+                    Tree agac = (Tree)kategoriler[kategori];
+                    List<TreeNode> dugumler = new List<TreeNode>();
+                    agac.toStack(agac.getRoot(), dugumler);
+                    int maxSize = 0;
+                    for (int i = 0; i < dugumler.Count; i++)
+                    {
+                        List<List<String>> heapKategorisi = dugumler[i].data;
+                        maxSize += heapKategorisi.Count;
+
+                    }
+
+                    heap = new Heap(maxSize);
+                    for (int i = 0; i < dugumler.Count; i++)
+                    {
+                        List<List<String>> heapKategorisi = dugumler[i].data;
+                        for (int j = 0; j < heapKategorisi.Count; j++)
+                        {
+                            List<string> içListe = heapKategorisi[j];
+                            heap.insert(içListe);
+                        }
+
+                    }
+
+
+                    
+                }
+            }
+            return heap;
+        } //heap doldurma metodu
+
+        public void yeniKategoriEkle(List<string> yeniKategori) 
+        {
+            string ürününKategorisi = yeniKategori[0];
+            if (kategoriler.ContainsKey(yeniKategori[0]))
+            {
+                tümÜrünListesi.Clear();
+                //Zaten kategori önceden varsa
+                bool öncedenVarMý = false;
+                Tree temp = (Tree)kategoriler[ürününKategorisi];
+                List<TreeNode> tempData = new List<TreeNode>();
+                temp.toStack(temp.getRoot(), tempData);
+                for (int i = 0; i < tempData.Count; i++)
+                {
+                    List<List<String>> templistListString = tempData[i].data;
+                    for (int k = 0; k < templistListString.Count; k++)
+                    {
+                        List<string> templistString = templistListString[k];
+                        if (templistString[0] == yeniKategori[1]) //Ürün Genel Adý Önceden Varsa Buradan devam ediyor. 
+                        {
+                            öncedenVarMý = true;
+                            List<string> yeniÜrün = new List<string>();
+                            for (int z = 1; z < yeniKategori.Count; z++)
+                            {
+                                yeniÜrün.Add(yeniKategori[z]);
+                            }
+                            tempData[i].data.Add(yeniÜrün);
+                            tümÜrünListesi.Clear();
+                            //DOSYAYA YAZDIRMA ÝÞLEMÝ
+                            try
+                            {
+                                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                                {
+                                    string nextline = sr.ReadLine();
+                                    while (nextline != null)
+                                    {
+
+                                        List<string> sonrakiÜrün = new List<string>();
+                                        sonrakiÜrün.Add(nextline);
+
+                                        for (int a = 0; a < sonrakiÜrün.Count; a++)
+                                        {
+                                            tümÜrünListesi.Add(sonrakiÜrün);
+
+                                        }
+                                        nextline = sr.ReadLine();
+                                    }
+
+
+                                }
+                            }
+                            catch (Exception ee)
+                            {
+                                Console.WriteLine("The file could not be read:");
+                                Console.WriteLine(ee.Message);
+                            }//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+                            int eklenecekÝndex = 0;
+                            for(int z = 0; z < tümÜrünListesi.Count; z++)
+                            {
+                                List<string> geçiciListe = tümÜrünListesi[z];
+                                if (kategoriler.ContainsKey(geçiciListe[0]))
+                                {
+                                    z++;
+                                }
+                                List<string> satýr = tümÜrünListesi[z];
+                                string[] satýrArray = new string[12];
+                                satýrArray = satýr[0].Split(' ');
+                                if(satýrArray[0] == yeniÜrün[0])
+                                {
+                                    eklenecekÝndex = z;
+                                    break;
+                                }
+                                
+                            }
+                            
+
+                            tümÜrünListesi.Insert(eklenecekÝndex, yeniÜrün);
+                            using (StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/market.txt")) //dosyaya tüm ürün listesini attýðýmýz veri yapýsýndan tekrar yazdýrýyor..
+                            {
+                                int count = 0;
+                                foreach (List<String> yaz in tümÜrünListesi)
+                                {
+                                    if(count != 0)
+                                    {
+                                        writer.WriteLine();
+                                    }
+                                    count++;
+                                    for(int j = 0; j < yaz.Count; j++)
+                                    {
+                                        if (j == yaz.Count-1)
+                                        {
+                                            writer.Write(yaz[j]);
+                                        }
+                                        else
+                                        {
+                                            writer.Write(yaz[j] + " ");
+                                        }
+                                    }
+                                    
+                                }
+                                writer.Close();
+                            }
+
+
+                            break;
+
+                        }
+                    }
+
+                }
+                if (öncedenVarMý == false) //Ürün Genel Adý Önceden Yoksa Burdan devam edicek.
+                {
+                    List<List<string>> yeniÜrünTreeNodeData = new List<List<string>>();
+                    List<string> yeniÜrün = new List<string>();
+                    for (int z = 1; z < yeniKategori.Count; z++)
+                    {
+                        yeniÜrün.Add(yeniKategori[z]);
+                    }
+                    yeniÜrünTreeNodeData.Add(yeniÜrün);
+                    temp.insert(yeniÜrünTreeNodeData);
+                    tümÜrünListesi.Clear();
+                    //DOSYAYA YAZDIRMA ÝÞLEMÝ
+                    try
+                    {
+                        using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                        {
+                            string nextline = sr.ReadLine();
+                            while (nextline != null)
+                            {
+
+                                List<string> sonrakiÜrün = new List<string>();
+                                sonrakiÜrün.Add(nextline);
+
+                                for (int a = 0; a < sonrakiÜrün.Count; a++)
+                                {
+                                    tümÜrünListesi.Add(sonrakiÜrün);
+
+                                }
+                                nextline = sr.ReadLine();
+                            }
+
+
+                        }
+                    }
+                    catch (Exception ee)
+                    {
+                        Console.WriteLine("The file could not be read:");
+                        Console.WriteLine(ee.Message);
+                    }//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+                    int eklenecekÝndex = 0;
+                    for (int z = 0; z < tümÜrünListesi.Count; z++)
+                    {
+                        List<string> geçiciListe = tümÜrünListesi[z];
+                        if (ürününKategorisi == geçiciListe[0] )
+                        {
+                            z++;
+                            eklenecekÝndex = z;
+                            break;
+                            
+                        }
+                       
+                        
+
+                    }
+
+                    tümÜrünListesi.Insert(eklenecekÝndex,yeniÜrün);
+                    
+                    using (StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/market.txt")) //dosyaya tüm ürün listesini attýðýmýz veri yapýsýndan tekrar yazdýrýyor..
+                    {
+                        int count = 0;
+                        foreach (List<String> yaz in tümÜrünListesi)
+                        {
+                            if (count != 0)
+                            {
+                                writer.WriteLine();
+                            }
+                            count++;
+                            for (int j = 0; j < yaz.Count; j++)
+                            {
+                                if (j == yaz.Count - 1)
+                                {
+                                    writer.Write(yaz[j]);
+                                }
+                                else
+                                {
+                                    writer.Write(yaz[j] + " ");
+                                }
+                            }
+
+                        }
+                        writer.Close();
+                    }
+
+                }
+
+
+            }
+            else //YENÝ KATEGORÝ EKLÝYOR.
+            {
+                tümÜrünListesi.Clear();
+                Tree yeniKategoriAgacý = new Tree();
+                List<List<string>> yeniÜrünTreeNodeData = new List<List<string>>();
+                List<string> yeniÜrün = new List<string>();
+                for (int z = 1; z < yeniKategori.Count; z++)
+                {
+                    yeniÜrün.Add(yeniKategori[z]);
+                }
+                yeniÜrünTreeNodeData.Add(yeniÜrün);
+                yeniKategoriAgacý.insert(yeniÜrünTreeNodeData);
+                kategoriler.Add(ürününKategorisi, yeniKategoriAgacý);
+                try
+                {
+                    using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                    {
+                        string nextline = sr.ReadLine();
+                        while (nextline != null)
+                        {
+
+                            List<string> sonrakiÜrün = new List<string>();
+                            sonrakiÜrün.Add(nextline);
+
+                            for (int a = 0; a < sonrakiÜrün.Count; a++)
+                            {
+                                tümÜrünListesi.Add(sonrakiÜrün);
+
+                            }
+                            nextline = sr.ReadLine();
+                        }
+
+                        sr.Close();
+                    }
+                }
+                catch (Exception ee)
+                {
+                    Console.WriteLine("The file could not be read:");
+                    Console.WriteLine(ee.Message);
+                }//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+                
+
+
+                List<string> ürünkategoriList = new List<string>();
+                ürünkategoriList.Add(ürününKategorisi);
+                sýralýKategoriler.Add(ürününKategorisi);
+                tümÜrünListesi.Add(ürünkategoriList);
+                tümÜrünListesi.Add(yeniÜrün);
+                using (StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/market.txt")) //dosyaya tüm ürün listesini attýðýmýz veri yapýsýndan tekrar yazdýrýyor..
+                {
+                    int count = 0;
+                    foreach (List<String> yaz in tümÜrünListesi)
+                    {
+                        if (count != 0)
+                        {
+                            writer.WriteLine();
+                        }
+                        count++;
+                        for (int j = 0; j < yaz.Count; j++)
+                        {
+                            if (j == yaz.Count - 1)
+                            {
+                                writer.Write(yaz[j]);
+                            }
+                            else
+                            {
+                                writer.Write(yaz[j] + " ");
+                            }
+                            
+                        }
+
+                    }
+                    writer.Close();
+                }
+
+            }
+
+
+            urunAcýklamasýHashTableHazýrla(); 
+        } //yeni Kategoride ürün ekleme metodu
+
+        public void dosyayaYaz(List<string> kullanýcýOzellikleri)
+        {
+            string dosyaYolu ="C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt";
+            StreamReader sr = new StreamReader(dosyaYolu);
+            bool icindeVarMý = false;
+            string nextline = sr.ReadLine();
+            
+            if (nextline!=null) {
+                
+                while (nextline != null)
+            {
+                    string[] satýrOzellikleri = nextline.Split(' ');
+                    if (satýrOzellikleri[0].Equals(kullanýcýOzellikleri[0]))
+                {
+                    icindeVarMý = true;
+                    break;
+                }
+                    nextline = sr.ReadLine();
+                }
+            }
+            sr.Close();
+            if (icindeVarMý)
+            {
+                Form2 hata = new Form2();
+                hata.Height = 125;
+                Label hataYazýsý = new Label();
+                hataYazýsý.Text = "!! KULLANICI ADI ZATEN VAR !!";
+                hataYazýsý.Font = new Font(hataYazýsý.Font.FontFamily, hataYazýsý.Font.Size + 5f, hataYazýsý.Font.Style);
+                hataYazýsý.Width = 300;
+                hata.Controls.Add(hataYazýsý);
+                hata.Show();
+
+            }
+            else
+            {
+                StreamReader reader = new StreamReader(dosyaYolu);
+                string line = reader.ReadLine();
+                List<string> txtFile = new List<string>();
+
+                while (line != null)
+                {
+                    txtFile.Add(line);
+                    line = reader.ReadLine();
+                }
+                reader.Close();
+                
+                FileStream fs = new FileStream(dosyaYolu, FileMode.OpenOrCreate, FileAccess.Write);
+                StreamWriter sw = new StreamWriter(fs);
+                
+                for (int i = 0; i < txtFile.Count; i++)
+                {
+                    sw.WriteLine(txtFile[i]);
+                }
+                for(int i = 0; i < kullanýcýOzellikleri.Count; i++)
+                {
+                    if (i == kullanýcýOzellikleri.Count -1 )
+                    {
+                        sw.Write(kullanýcýOzellikleri[i]);
+                    }
+                    else
+                    {
+                        sw.Write(kullanýcýOzellikleri[i] + " ");
+                    }
+                }
+                sr.Close();
+                sw.Close();
+                fs.Close();
+                Form2 kayýtolundu = new Form2();
+                Label tamamlandý = new Label();
+                tamamlandý.Text = "Kaydýnýz Baþarýyla Gerçekleþtirildi";
+                tamamlandý.Width = 300;
+                kayýtolundu.Controls.Add(tamamlandý);
+                kayýtolundu.Show();
+
+            }
+
+
+        } //yeni kayýtlarý dosyaya yazdýrýyor
+
+       public void hashTabledaUrunBilgisiDegistir(List<List<String>> tumUrunlerVeOzellikleri)
+       {
+            int count = 0;
+
+            for(int j=0;j<sýralýKategoriler.Count;j++)
+            {
+                string kategori = sýralýKategoriler[j];
+                List<TreeNode> treeNodes = new List<TreeNode>();
+                Tree agac =(Tree) kategoriler[kategori];
+                agac.toStack(agac.getRoot(), treeNodes);
+                for(int i = 0; i < treeNodes.Count; i++)
+                {
+                    
+                    TreeNode geçiciNode = treeNodes[i];
+                    
+                    for(int k = 0; k < geçiciNode.data.Count; k++)
+                    {
+                        
+                        List<string> içListe = geçiciNode.data[k];
+                        List<string> içListeYerine = tumUrunlerVeOzellikleri[count];
+                        count++;
+                        for (int z = 0; z < içListeYerine.Count; z++)
+                        {
+                            içListe[z + 1] = içListeYerine[z];
+                        }
+                    }
+                }
+            }
+       } //ürün bilgisi deðiþtir metodu için..
+
+        public void hashtabledanDosyayaYazdýr(List<List<string>> tumUrunlerVeOzellikleri)
+        {
+            
+            FileStream fs = new FileStream("C:/Users/oguzhan.kazakk/Desktop/market.txt", FileMode.Truncate, FileAccess.Write);
+            StreamWriter sw = new StreamWriter(fs);
+            
+            for(int i = 0; i < sýralýKategoriler.Count; i++)
+            {
+                string kategori = sýralýKategoriler[i];
+                sw.WriteLine(kategori);
+                Tree agac = (Tree) kategoriler[kategori];
+                List<TreeNode> agacNodes = new List<TreeNode>();
+                agac.toStack(agac.getRoot(), agacNodes);
+                for(int k=0;k<agacNodes.Count; k++)
+                {
+                    List<List<string>> dýþListe = agacNodes[k].data;
+                    
+                    for(int j=0;j< dýþListe.Count; j++)
+                    {
+                        List<string> içliste = dýþListe[j];
+                        for(int z = 0; z < içliste.Count; z++)
+                        {
+                            if(z != içliste.Count-1)
+                            {
+                                sw.Write(içliste[z] + " ");
+                            }
+                            else
+                            {
+                                sw.Write(içliste[z]);
+                                sw.WriteLine();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            
+            sw.Close();
+            fs.Close();
+
+
+        }
+
+        private void agacDengele(int low, int high, Tree agac, List<TreeNode> liste)
+        {
+            if (low == high)
+            {
+                return;
+            }
+            int midpoint = (low + high) / 2;
+            agac.insert(liste[midpoint].data);
+            agacDengele(midpoint + 1, high,agac,liste);
+            agacDengele(low, midpoint, agac, liste);
+            
+        }
+            //ARAYÜZ ARAÇLARININ METOTLARI
+
+            private void button1_Click(object sender, EventArgs e) 
+        {
+           
+            int rowCount = 0;
+            Form2 bulunanÜrünEkraný=null;
+            List<string> anahtarKelimeler = null;
+            List<List<String>> arananUrun = null;
+            arananÝçKelime = new List<List<string>>();
+            string aranan = textBox1.Text;
+            anahtarKelimeler = new List<string>();
+            foreach (string anahtar in urunAcýklamasý.Keys)
+            {
+                
+                anahtarKelimeler.Add(anahtar);
+            }
+            for(int o = 0; o < anahtarKelimeler.Count; o++)
+            {
+                 if(anahtarKelimeler[o].Contains(aranan)) 
+                {
+     
+                    rowCount++;
+                    TableLayoutPanel layout = new TableLayoutPanel();
+                    
+                    arananUrun = (List<List<String>>)urunAcýklamasý[anahtarKelimeler[o]];
+
+                    
+
+
+                    for (int k = 0; k < arananUrun.Count; k++)
+                    {
+                        if (!arananÝçKelime.Contains(arananUrun[k]))
+                        {
+                            arananÝçKelime.Add(arananUrun[k]);
+                            bulunanÜrünler.Add(arananUrun[k]);
+                        }
+            
+                    }
+                    bulunanÜrünEkraný = new Form2();
+                    bulunanÜrünEkraný.Width = 750;
+                    layout.ColumnCount = 1;
+                    layout.RowCount = rowCount;
+                    layout.Dock = DockStyle.Fill;
+                    bulunanÜrünEkraný.Controls.Add(layout);
+                    Button sepeteEkle;
+                    
+
+                    for (int i = 0; i < arananÝçKelime.Count; i++)
+                    {
+                        string fiyat = "";
+                        string text = "";
+                        var idx = i;
+                        List<String> stringListe;
+                        stringListe = arananÝçKelime[i];
+                        sepeteEkle = new Button();
+                        sepeteEkle.Click += new EventHandler((sender2, e2) => ListItemClicked(idx));
+                        
+                        
+
+                        sepeteEkle.Width = 700;
+                        for (int z = 0; z < arananÝçKelime[i].Count; z++)
+                        {
+                            if (z == 3 || z == 4)
+                            {
+                                continue;
+                            }
+                            else if (z == 5)
+                            {
+                                fiyat = stringListe[z] + "TL ";
+
+                            }
+                            else
+                            {
+                                text += stringListe[z] + " ";
+                            }
+
+                        }
+                        text += fiyat;
+                        sepeteEkle.Text = text;
+                        
+                       
+                        layout.Controls.Add(sepeteEkle, 0, i + 1);
+
+                    }
+                }
+
+            
+               
+            }
+            if(bulunanÜrünEkraný != null)
+                bulunanÜrünEkraný.Show();
+            else
+            {
+                Form2 dikkat = new Form2();
+                Label uyarý = new Label();
+                uyarý.Scale(2F, 2F);
+                uyarý.Text = "ARADIÐINIZ ÜRÜN BULUNAMADI";
+                dikkat.Controls.Add(uyarý);
+                dikkat.Show();
+            }
+
+        } //ÝLK GÝRÝÞTEKÝ ARA BUTONUNA TIKLANDIÐINDA ARADIÐIMIZ KELÝMEYE GÖRE BULDURDUK YA DA BULDURMADIÐIMIZDA HATA EKRANI VERDÝRTTÝK.
+
+        private void ListItemClicked(int idx)
+        {
+            
+        }
+
+
+
+        //Ýterative oluþturulan butonlarýn onclick metodu
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        
+
+        private void button3_Click(object sender, EventArgs e) //PERSONEL GÝRÝÞÝ
+        {
+            Form2 personelGirisi = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            personelGirisi.Scale(2.2F, 0.85F);
+            layout.ColumnCount = 2;
+            layout.RowCount = 6;
+            layout.Width = 700;
+            layout.Height = 500;
+            Button yeniKategorEkle = new Button();
+            yeniKategorEkle.Click += new EventHandler(this.yeniKategoriEkle_Click);
+            yeniKategorEkle.Text = "Yeni Kategoride Ürün Ekle";
+            yeniKategorEkle.Width = 250;
+            Button yeniMarkaEkle = new Button();
+            yeniMarkaEkle.Click += new EventHandler(this.yeniKategoriEkle_Click);
+            yeniMarkaEkle.Text = "Yeni Marka veya Modelde Ürün Ekle";
+            yeniMarkaEkle.Width = 250;
+            Button ürünAraSil = new Button();
+            ürünAraSil.Click += new EventHandler(this.ürünAraSil_click);
+            ürünAraSil.Text = "Ürün Ara/Sil";
+            ürünAraSil.Width = 250;
+            Button ürünBilgisiDegistir = new Button();
+            ürünBilgisiDegistir.Click += new EventHandler(this.ürünBilgisiDegistir_click);
+            ürünBilgisiDegistir.Text = "Ürün Bilgisi Deðiþtir";
+            ürünBilgisiDegistir.Width = 250;
+            TextBox gelirTextBox = new TextBox();
+            gelirTextBox.ForeColor = System.Drawing.Color.Gray;
+            gelirTextBox.Text = "GELÝR";
+            TextBox giderTextBox = new TextBox();
+            giderTextBox.ForeColor = System.Drawing.Color.Gray;
+            giderTextBox.Text = "GÝDER";
+            TextBox karTextBox = new TextBox();
+            karTextBox.ForeColor = System.Drawing.Color.Gray;
+            karTextBox.Text = "KAR";
+            Button hesapla = new Button();
+            hesapla.Click += new EventHandler((sender2, e2) => hesapla_click(gelirTextBox, giderTextBox, karTextBox));
+            hesapla.Text = "Hesapla";
+            layout.Controls.Add(yeniKategorEkle);
+            layout.Controls.Add(yeniMarkaEkle);
+            layout.Controls.Add(ürünAraSil);
+            layout.Controls.Add(ürünBilgisiDegistir);
+            layout.Controls.Add(gelirTextBox);
+            layout.Controls.Add(giderTextBox);
+            layout.Controls.Add(karTextBox);
+            layout.Controls.Add(hesapla);
+            personelGirisi.Controls.Add(layout);
+            personelGirisi.Show();
+            personelGirisi.Show();
+        }
+
+        private void hesapla_click(TextBox gelirTextBox, TextBox giderTextBox, TextBox karTextBox)
+        {
+            StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            string nextline = reader.ReadLine();
+            int gelir = 0;
+            int gider = 0;
+            while(nextline != null)
+            {
+                string[] satýr = nextline.Split(' ');
+                if (satýr.Length == 12)//ürüne denk gelmiþ demektir
+                {
+                    int maliyet = Int32.Parse(satýr[4]);
+                    int satýþFiyatý = Int32.Parse(satýr[5]);
+                    gelir += satýþFiyatý;
+                    gider += maliyet;
+                }
+                nextline = reader.ReadLine();
+                }
+            gelirTextBox.Text = "Gelir:" +gelir+"";
+            giderTextBox.Text = "Gider:" +gider + "";
+            int kar = gelir - gider;
+            karTextBox.Text = "Kar:" +kar + "";
+            reader.Close();
+            karTextBox.ForeColor = System.Drawing.Color.Black;
+            gelirTextBox.ForeColor = System.Drawing.Color.Black;
+            giderTextBox.ForeColor = System.Drawing.Color.Black;
+        }//PERSONEL GÝRÝÞÝ -> KAR GELÝR GÝDER HESAPLA
+
+        private void ürünBilgisiDegistir_click(object sender, EventArgs e)
+        {
+            tümÜrünlerVeOzellikleri = new List<List<string>>();
+            using (StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt")) //DOSYAYI OKUYOR BÜTÜN ÜRÜNLERÝN ÖZELLÝKLERÝNÝ AYRI AYRI LÝST<STRÝNG>E ATIP BÜTÜN LÝSTELERÝ DE TÜMÜRÜNLERVEÖZELLÝKLERÝ LÝSTESÝNDE SAKLIYOR.
+            {
+                string nextline = reader.ReadLine();
+                while (nextline !=null)
+                {
+                    
+                    if (kategoriler.ContainsKey(nextline))
+                    {
+                        nextline = reader.ReadLine();
+                    }
+                    string [] geçiciSatýrýnOzellikleri = nextline.Split(' ');
+                    List<string> deðiþtirilecekOzellikler = new List<string>();
+                    for (int i=1;i<12;i++){
+                        deðiþtirilecekOzellikler.Add(geçiciSatýrýnOzellikleri[i]);
+                    }
+                    tümÜrünlerVeOzellikleri.Add(deðiþtirilecekOzellikler);
+                    nextline = reader.ReadLine();
+                }
+                reader.Close();
+            }
+
+            Form2 ürünBilgiDegistirEkraný = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Button degistirButon = new Button();
+            degistirButon.Text = "Deðiþtir";
+            layout.ColumnCount = 11;
+            layout.RowCount = tümÜrünlerVeOzellikleri.Count()+1;
+            for(int satýr = 0; satýr < tümÜrünlerVeOzellikleri.Count; satýr++)
+            {
+                for(int sütun = 0; sütun < tümÜrünlerVeOzellikleri[satýr].Count; sütun++)
+                {
+                    TextBox ürünOzelligiTextBox = new TextBox();
+                    List<string> ozellik = tümÜrünlerVeOzellikleri[satýr];
+                    ürünOzelligiTextBox.Text = ozellik[sütun];
+                    ürünOzelligiTextBox.Width = 160;
+                    var idx = satýr;
+                    var idx2 = sütun;
+                    
+                    layout.Controls.Add(ürünOzelligiTextBox);
+                    degistirButon.Click += new EventHandler((sender2, e2) => ListItemClicked4(ürünOzelligiTextBox, idx, idx2));
+
+                }
+            }
+
+            
+
+
+            layout.Controls.Add(degistirButon);
+
+            layout.Width = 2000;
+            layout.Height = 250 * tümÜrünlerVeOzellikleri.Count;
+            ürünBilgiDegistirEkraný.Height = 300 * tümÜrünlerVeOzellikleri.Count;
+            ürünBilgiDegistirEkraný.Width = 2500;
+            ürünBilgiDegistirEkraný.Controls.Add(layout);
+            ürünBilgiDegistirEkraný.Deactivate += new EventHandler(ürünBilgiDegistirEkraný_deactivate);
+            ürünBilgiDegistirEkraný.Show();
+        } //ürün bilgisi deðiþtir ekranýnda deðiþtir butonuna basýldýðýnda..
+
+        private void ürünBilgiDegistirEkraný_deactivate(object sender, EventArgs e)
+        {
+            hashTabledaUrunBilgisiDegistir(tümÜrünlerVeOzellikleri);
+            hashtabledanDosyayaYazdýr(tümÜrünlerVeOzellikleri);
+            Form2 bilgiekraný = new Form2();
+            bilgiekraný.Height = 100;
+            Label bilgi = new Label();
+            bilgi.Text = "Ürünlerin Bilgileri Güncellendi.";
+            bilgi.Width = 500;
+            bilgi.Font = new Font(bilgi.Font.FontFamily, bilgi.Font.Size + 4f, bilgi.Font.Style);
+            bilgiekraný.Controls.Add(bilgi);
+            bilgiekraný.Show();
+
+        } //ürün bilgisi deðiþtir ekraný kapatýldýðýnda..
+
+        private void ListItemClicked4(TextBox kutu,int satýr,int sütun) //ürün bilgisi kopya bir veri yapýsýnda deðiþtirildi.
+        {
+            List<string> ozellik = tümÜrünlerVeOzellikleri[satýr];
+            ozellik[sütun] = kutu.Text;
+            
+        }
+
+        
+
+        private void ListItemClicked2(int idx) //Personel -> Ürün ara Sil -> ekrana çýkan butonlardan herhangi birine týklandýðýnda..
+        {
+            List<string> silinecekÜrün = tümÜrünListesi[idx];
+            string line = null;
+            string silinecek = silinecekÜrün[0];
+            List<string> eskiDosya = null;
+            using (StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt")) //dosyayý okuyor. bütün ürünleri eskidosya veri yapýsýna aktarýyor silinecek ürünü bulduðunda eskidosya veri yapýsýndan ürünü sildiriyor.
+            { 
+                eskiDosya = new List<string>();
+
+                while ((line = reader.ReadLine()) != null)
+                    {
+                        eskiDosya.Add(line);
+                        
+                    }
+                    for(int i=0;i<eskiDosya.Count;i++)
+                {
+                    if (kategoriler.ContainsKey(eskiDosya[i]))
+                    {
+                        silinenUrunKategorisi = eskiDosya[i];
+                    }
+                    if (eskiDosya[i].Equals(silinecek))
+                    {
+                        eskiDosya.RemoveAt(i);
+                            break;
+                    }
+                    reader.Close();
+                }
+
+            }
+            using (StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/market.txt")) //dosyaya tüm ürün listesini attýðýmýz veri yapýsýndan tekrar yazdýrýyor..
+            {
+                foreach(string yaz in eskiDosya)
+                {
+                    writer.WriteLine(yaz);
+                }
+                writer.Close();
+            }//DOSYADAN SÝLME ÝÞLEMÝ
+
+            //KATEGORÝLER HASHTABLEINDAN SÝLME ÝÞLEMÝ
+            Tree agac = (Tree) kategoriler[silinenUrunKategorisi];
+            List<TreeNode> silinecekElemanýnAgacýnýnNodelarý = new List<TreeNode>();
+            agac.toStack(agac.getRoot(), silinecekElemanýnAgacýnýnNodelarý);
+            for(int nodeDolas = 0; nodeDolas < silinecekElemanýnAgacýnýnNodelarý.Count; nodeDolas++)
+            {
+                TreeNode temp = silinecekElemanýnAgacýnýnNodelarý[nodeDolas];
+                List<List<string>> nodeData = temp.data;
+                for(int i = 0; i < nodeData.Count; i++)
+                {
+                    List<string> içListe = nodeData[i];
+                    string tekSatýr = "";
+                    for(int k = 0; k < içListe.Count; k++)
+                    {
+                        tekSatýr += içListe[k];
+                    }
+                    tekSatýr = tekSatýr.Replace(" ", "");
+                    silinecek = silinecek.Replace(" ", "");
+                    if (tekSatýr.Equals(silinecek))
+                    {
+                        nodeData.RemoveAt(i);
+                    }
+                }
+
+               
+            }
+            Form2 silindiEkraný = new Form2();
+            Label silindiBilgi = new Label();
+            silindiBilgi.Text = "Ürün Silme Ýþlemi Baþarýyla Gerçekleþtirildi!";
+            
+            silindiBilgi.Font = new Font(silindiBilgi.Font.FontFamily, silindiBilgi.Font.Size + 3f, silindiBilgi.Font.Style);
+            silindiBilgi.Width = 500;
+            silindiBilgi.Height = 500;
+            silindiEkraný.Controls.Add(silindiBilgi);
+            silindiEkraný.Scale(1.1f, 0.4f);
+            urunAcýklamasýHashTableHazýrla();
+            silindiEkraný.Show();
+
+            }
+        private void ürünAraSil_click(object sender, EventArgs e) //Personel Giriþi -> ürünAraSil
+        {
+            Form2 ürünAraSilEkraný = new Form2();
+            
+            
+            
+            Label ürünBilgi = new Label();
+            ürünBilgi.Width = 600;
+            ürünBilgi.Text = "Silmek Ýstediðiniz Ürüne Týklayýn.";
+            TableLayoutPanel layout = new TableLayoutPanel();
+            ürünAraSilEkraný.Width = 750;
+            layout.ColumnCount = 1;
+            layout.Dock = DockStyle.Fill;
+            Button ürünSilButon;
+            
+
+            tümÜrünListesi.Clear();
+            try//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+            {
+                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                {
+                    string nextline = sr.ReadLine();
+                    while (nextline != null)
+                    {
+                        if (kategoriler.ContainsKey(nextline))
+                        {
+
+                            nextline = sr.ReadLine();
+
+                        }
+
+                        List<string> sonrakiÜrün = new List<string>();
+                        sonrakiÜrün.Add(nextline);
+
+                            
+
+                        tümÜrünListesi.Add(sonrakiÜrün);
+
+                        
+                        nextline = sr.ReadLine();
+                    }
+
+
+                }
+            }
+            catch (Exception ee)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(ee.Message);
+            }
+
+
+            int rowCount = 0;
+            ürünBilgi.Font = new Font(ürünBilgi.Font.FontFamily, ürünBilgi.Font.Size + 3f, ürünBilgi.Font.Style);
+
+            layout.Controls.Add(ürünBilgi);
+            foreach (List<string> ürün in tümÜrünListesi)  //ürün listesi kadar buton oluþturuluyor.
+            {
+                string fiyat = "";
+                string text ="";
+                string[] ürünOzellikleri = ürün[0].Split(' ');
+                for (int z = 0; z < ürünOzellikleri.Length; z++)
+                {
+                    if (z == 3 || z == 4)
+                    {
+                        continue;
+                    }
+                    else if (z == 5)
+                    {
+                        fiyat = ürünOzellikleri[z] + "TL ";
+
+                    }
+                    else
+                    {
+                        text += ürünOzellikleri[z] + " ";
+                    }
+
+                }
+                text += fiyat;
+                
+
+                ürünSilButon = new Button();
+                ürünSilButon.Text = ürün[0];
+                ürünSilButon.Width = 500;
+                ürünSilButon.Text = text;
+                var idx = rowCount;
+                ürünSilButon.Click += new EventHandler((sender2, e2) => ListItemClicked2(idx));
+                
+                rowCount++;
+                layout.Controls.Add(ürünSilButon);
+            }
+            layout.RowCount = rowCount;
+            
+            ürünAraSilEkraný.Controls.Add(layout);
+            
+            ürünAraSilEkraný.Show();
+
+        }
+
+
+
+
+        private void yeniKategoriEkle_Click(object sender, EventArgs e)
+        {
+            Form2 kategoriEklemeEkraný = new Form2();
+            kategoriEklemeEkraný.Scale(4F, 0.5F);
+            Label kategoriBilgisi = new Label();
+            Label kategoriBilgisiSýgmadý = new Label();
+            kategoriBilgisi.Text = "Var olan kategoriler: ";
+            int count = 0;
+            foreach (string kategori in kategoriler.Keys)
+            {
+                count++;
+                if (count > 1)
+                    kategoriBilgisi.Text += ", " + kategori;
+                else
+                {
+                    kategoriBilgisi.Text += kategori;
+                }
+            }
+            kategoriBilgisiSýgmadý.Width = 500;
+            kategoriBilgisiSýgmadý.Text = "Eklemek istediðiniz kategori adýný yazýn.(Var olan kategorilerden deðilse yeni kategorinin adýný yazýn)";
+            kategoriBilgisi.Width = 170 * count;
+            kategoriGir = new TextBox();
+            Button kategoriEkle = new Button();
+            kategoriEkle.Click += new EventHandler(this.kategoriEkle_Click);
+            kategoriEkle.Width = 100;
+            kategoriGir.Width = 250;
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Controls.Add(kategoriBilgisiSýgmadý);
+            layout.Width = 300 * count;
+            layout.ColumnCount = 1;
+            layout.RowCount = 4;
+            layout.Controls.Add(kategoriBilgisi);
+            layout.Controls.Add(kategoriGir);
+            layout.Controls.Add(kategoriEkle);
+            kategoriEkle.Text = "Kategoriyi Ekle";
+            kategoriEklemeEkraný.Controls.Add(layout);
+
+            kategoriEklemeEkraný.Show();
+        }//Personel Giriþi -> yeni kategori ekleme ekran açan buton
+        private void kategoriEkle_Click(object sender, EventArgs e)//Personel Giriþi -> yeni kategori ekleme -> kategori ekle butonu.
+        {
+            string yeniKategori = kategoriGir.Text;
+            Form2 yeniOzellikAlmaEkraný = new Form2();
+            yeniOzellikAlmaEkraný.Scale(1F, 2F);
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.RowCount = 14;
+            layout.ColumnCount = 1;
+            layout.Width = 500;
+            layout.Height = 1000;
+            Label ürünKategori = new Label();
+            ürünKategori.Text = "Girilen Kategori: " + yeniKategori;
+            isimAl = new TextBox();
+            isimAl.ForeColor = System.Drawing.Color.Gray;
+            isimAl.Click += new EventHandler(this.ÝsimAl_Click);
+            isimAl.Text = "ürün genel ismi";
+            
+
+            markaAl = new TextBox();
+            markaAl.ForeColor = System.Drawing.Color.Gray;
+            markaAl.Text = "ürünün markasý";
+            markaAl.Click += new EventHandler(this.MarkaAl_Click);
+
+            modelAl = new TextBox();
+            modelAl.ForeColor = System.Drawing.Color.Gray;
+            modelAl.Text = "ürünün modeli";
+            modelAl.Click += new EventHandler(this.modelAl_Click);
+
+            stokSayýsýAl = new TextBox();
+            stokSayýsýAl.ForeColor = System.Drawing.Color.Gray;
+            stokSayýsýAl.Text = "stoktaki sayý";
+            stokSayýsýAl.Click += new EventHandler(this.stokSayýsýAl_Click);
+
+
+            maliyetAl = new TextBox();
+            maliyetAl.ForeColor = System.Drawing.Color.Gray;
+            maliyetAl.Text = "ürünün maliyet";
+            maliyetAl.Click += new EventHandler(this.maliyetAl_Click);
+
+
+            satýþFiyatýAl = new TextBox();
+            satýþFiyatýAl.ForeColor = System.Drawing.Color.Gray;
+            satýþFiyatýAl.Text = "ürünün satýþ fiyatý";
+            satýþFiyatýAl.Click += new EventHandler(this.satýþFiyatýAl_Click);
+
+            özellik1 = new TextBox();
+            özellik1.ForeColor = System.Drawing.Color.Gray;
+            özellik1.Text = "özellik1";
+            özellik1.Click += new EventHandler(this.özellik1_Click);
+
+            özellik2 = new TextBox();
+            özellik2.ForeColor = System.Drawing.Color.Gray;
+            özellik2.Text = "özellik2";
+            özellik2.Click += new EventHandler(this.özellik2_Click);
+
+            özellik3 = new TextBox();
+            özellik3.ForeColor = System.Drawing.Color.Gray;
+            özellik3.Text = "özellik3";
+            özellik3.Click += new EventHandler(this.özellik3_Click);
+
+            özellik4 = new TextBox();
+            özellik4.ForeColor = System.Drawing.Color.Gray;
+            özellik4.Text = "özellik4";
+            özellik4.Click += new EventHandler(this.özellik4_Click);
+
+            özellik5 = new TextBox();
+            özellik5.ForeColor = System.Drawing.Color.Gray;
+            özellik5.Text = "özellik5";
+            özellik5.Click += new EventHandler(this.özellik5_Click);
+
+            özellik6 = new TextBox();
+            özellik6.ForeColor = System.Drawing.Color.Gray;
+            özellik6.Text = "özellik6";
+            özellik6.Click += new EventHandler(this.özellik6_Click);
+            Button ekle = new Button();
+            ekle.Click += new EventHandler(this.ekle_Click);
+            ekle.Text = "Ekle";
+            ürünKategori.Width = 250;
+            layout.Controls.Add(ürünKategori);
+            layout.Controls.Add(isimAl);
+            layout.Controls.Add(markaAl);
+            layout.Controls.Add(modelAl);
+            layout.Controls.Add(stokSayýsýAl);
+            layout.Controls.Add(maliyetAl);
+            layout.Controls.Add(satýþFiyatýAl);
+            layout.Controls.Add(özellik1);
+            layout.Controls.Add(özellik2);
+            layout.Controls.Add(özellik3);
+            layout.Controls.Add(özellik4);
+            layout.Controls.Add(özellik5);
+            layout.Controls.Add(özellik6);
+            layout.Controls.Add(ekle);
+            yeniOzellikAlmaEkraný.Controls.Add(layout);
+            yeniOzellikAlmaEkraný.Show();
+            
+        }
+
+
+        // BUTONLARIN ONCLÝCKLERÝ
+        private void ÝsimAl_Click(object sender, EventArgs e)
+        {
+            isimAl.ForeColor = System.Drawing.Color.Black;
+            isimAl.Text = "";
+        }
+        private void MarkaAl_Click(object sender, EventArgs e)
+        {
+            markaAl.ForeColor = System.Drawing.Color.Black;
+            markaAl.Text = "";
+        }
+        private void modelAl_Click(object sender, EventArgs e)
+        {
+            modelAl.ForeColor = System.Drawing.Color.Black;
+            modelAl.Text = "";
+        }
+        private void stokSayýsýAl_Click(object sender, EventArgs e)
+        {
+            stokSayýsýAl.ForeColor = System.Drawing.Color.Black;
+            stokSayýsýAl.Text = "";
+        }
+        private void maliyetAl_Click(object sender, EventArgs e)
+        {
+            maliyetAl.ForeColor = System.Drawing.Color.Black;
+            maliyetAl.Text = "";
+        }
+        private void satýþFiyatýAl_Click(object sender, EventArgs e)
+        {
+            satýþFiyatýAl.ForeColor = System.Drawing.Color.Black;
+            satýþFiyatýAl.Text = "";
+        }
+        private void özellik1_Click(object sender, EventArgs e)
+        {
+            özellik1.ForeColor = System.Drawing.Color.Black;
+            özellik1.Text = "";
+        }
+        private void özellik2_Click(object sender, EventArgs e)
+        {
+            özellik2.ForeColor = System.Drawing.Color.Black;
+            özellik2.Text = "";
+        }
+        private void özellik3_Click(object sender, EventArgs e)
+        {
+            özellik3.ForeColor = System.Drawing.Color.Black;
+            özellik3.Text = "";
+        }
+        private void özellik4_Click(object sender, EventArgs e)
+        {
+            özellik4.ForeColor = System.Drawing.Color.Black;
+            özellik4.Text = "";
+        }
+        private void özellik5_Click(object sender, EventArgs e)
+        {
+            özellik5.ForeColor = System.Drawing.Color.Black;
+            özellik5.Text = "";
+        }
+        private void özellik6_Click(object sender, EventArgs e)
+        {
+            özellik6.ForeColor = System.Drawing.Color.Black;
+            özellik6.Text = "";
+        }
+        private void textBox1_Click(object sender, EventArgs e)
+        {
+            textBox1.ForeColor = System.Drawing.Color.Black;
+            textBox1.Text = "";
+        }
+
+        private void kullanýcýAdý_click(object sender, EventArgs e)
+        {
+            kullanýcýAdý.ForeColor = System.Drawing.Color.Black;
+            kullanýcýAdý.Text = "";
+        }
+        private void þifre_click(object sender, EventArgs e)
+        {
+            þifre.ForeColor = System.Drawing.Color.Black;
+            þifre.Text = "";
+        }
+        private void yaþ_click(object sender, EventArgs e)
+        {
+            yaþ.ForeColor = System.Drawing.Color.Black;
+            yaþ.Text = "";
+        }
+        private void maaþ_click(object sender, EventArgs e)
+        {
+            maaþ.ForeColor = System.Drawing.Color.Black;
+            maaþ.Text = "";
+        }
+        private void cinsiyet_click(object sender, EventArgs e)
+        {
+            cinsiyet.ForeColor = System.Drawing.Color.Black;
+            cinsiyet.Text = "";
+        }
+        private void þehir_click(object sender, EventArgs e)
+        {
+            þehir.ForeColor = System.Drawing.Color.Black;
+            þehir.Text = "";
+        }
+        private void NsayýsýTextBox_click(TextBox nsayýsýTextBox)
+        {
+            nsayýsýTextBox.Text = "";
+        }
+
+        private void fiyatListeleTextBoxMax_click(TextBox fiyatListeleTextBoxMax)
+        {
+            fiyatListeleTextBoxMax.Text = "";
+        }
+        private void fiyatListeleTextBoxMin_click(TextBox fiyatListeleTextBoxMin)
+        {
+            fiyatListeleTextBoxMin.Text = "";
+        }
+        private void isimListeleTextBox_click(TextBox isimListeleTextBox)
+        {
+            isimListeleTextBox.Text = "";
+        }
+        private void kategoriListeleTextBox_click(TextBox kategoriListeleTextBox)
+        {
+            kategoriListeleTextBox.Text = "";
+        }
+        private void aramaCubuguButon_click(TextBox aramaCubugu)
+        {
+            aramaCubugu.Text = "";
+            aramaCubugu.ForeColor = System.Drawing.Color.Black;
+        }
+
+
+        private void ekle_Click(object sender, EventArgs e) //yeni ürün eklerken en son basýlan buton ->Personel Giriþi ->yeni kategoride veya isimde ürün ekle -> bilgileri aldýktan sonra bastýðýmýz ekle butonu
+        {
+            List<string> yeniKategorideÜrünÖzellikleri = new List<string>();
+            yeniKategorideÜrünÖzellikleri.Add(kategoriGir.Text);
+            yeniKategorideÜrünÖzellikleri.Add(isimAl.Text);
+            yeniKategorideÜrünÖzellikleri.Add(markaAl.Text);
+            yeniKategorideÜrünÖzellikleri.Add(modelAl.Text);
+            yeniKategorideÜrünÖzellikleri.Add(stokSayýsýAl.Text);
+            yeniKategorideÜrünÖzellikleri.Add(maliyetAl.Text);
+            yeniKategorideÜrünÖzellikleri.Add(satýþFiyatýAl.Text);
+            yeniKategorideÜrünÖzellikleri.Add(özellik1.Text);
+            yeniKategorideÜrünÖzellikleri.Add(özellik2.Text);
+            yeniKategorideÜrünÖzellikleri.Add(özellik3.Text);
+            yeniKategorideÜrünÖzellikleri.Add(özellik4.Text);
+            yeniKategorideÜrünÖzellikleri.Add(özellik5.Text);
+            yeniKategorideÜrünÖzellikleri.Add(özellik6.Text);
+
+            
+            yeniKategoriEkle(yeniKategorideÜrünÖzellikleri);
+            Form2 eklendi = new Form2();
+            Label eklendiLabel = new Label();
+            eklendiLabel.Text = "Ürün Ekleme Ýþlemi Baþarýyla Gerçekleþtirildi!";
+            eklendiLabel.Width = 500;
+            eklendiLabel.Height = 500;
+            eklendi.Scale(1.1F, 0.4F);
+            eklendiLabel.Font = new Font(eklendiLabel.Font.FontFamily, eklendiLabel.Font.Size + 3f, eklendiLabel.Font.Style);
+            eklendi.Controls.Add(eklendiLabel);
+            eklendi.Show();
+        }
+
+        private void button2_Click(object sender, EventArgs e) //MÜÞTERÝ GÝRÝÞÝ
+        {
+            Form2 musteriGirisi = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.RowCount = 3;
+            layout.ColumnCount = 1;
+            ID = new TextBox();
+            ID.ForeColor = Color.Gray;
+            ID.Click += new EventHandler(ýd_click);
+            ID.Width = 200;
+            ID.Height = 200;
+            ID.Text = "Kullanýcý adý";
+            þifreGir = new TextBox();
+            þifreGir.ForeColor = Color.Gray;
+            þifreGir.Click += new EventHandler(þifregir_click);
+            þifreGir.Width = 200;
+            þifreGir.Height = 200;
+            þifreGir.Text = "Þifre";
+            Button giriþYap = new Button();
+            giriþYap.Height = 25;
+            giriþYap.Width = 100;
+            giriþYap.Text = "Giriþ Yap";
+            giriþYap.Click += new EventHandler(this.giriþYap_click);
+            layout.Width = 250;
+            layout.Height = 250;
+            layout.Controls.Add(ID);
+            layout.Controls.Add(þifreGir);
+            layout.Controls.Add(giriþYap);
+            musteriGirisi.Controls.Add(layout);
+            musteriGirisi.Show();
+        }
+
+        private void ýd_click(object sender, EventArgs e)
+        {
+            ID.Text = "";
+            ID.ForeColor = Color.Black;
+        }
+
+        private void þifregir_click(object sender, EventArgs e)
+        {
+            þifreGir.Text = "";
+            þifreGir.ForeColor = Color.Black;
+        }
+
+        private void giriþYap_click(object sender, EventArgs e)
+        {
+            string kullanýcýAdý = ID.Text;
+            string þifre = þifreGir.Text;
+            StreamReader reader = new StreamReader("C: /Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            string nextline = reader.ReadLine();
+            bool giriþYapýldýMý = false;
+            while (nextline != null)
+            {
+                string[] satýrtut = null;
+                if (nextline != null)
+                {
+                    satýrtut = nextline.Split(' ');
+                }
+                
+                if (kullanýcýAdý.Equals(satýrtut[0]) && þifre.Equals(satýrtut[1]) ) // kullanýcý giriþi baþarýlý
+                {
+                    mevcutKullanýcý = kullanýcýAdý;
+                    Form2 müþteriEkraný = new Form2();
+                    giriþYapýldýMý = true;
+                    TableLayoutPanel layout = new TableLayoutPanel();
+                    layout.RowCount = 7;
+                    layout.ColumnCount = 2;
+
+                    aramaCubugu = new TextBox();
+                    aramaCubugu.Width = 300;
+                    layout.Controls.Add(aramaCubugu);                    aramaCubugu.Text= "Ne aramýþtýnýz?                                                                      ??";
+                    aramaCubugu.ForeColor = Color.Gray;
+                    aramaCubugu.Click += new EventHandler((sender2, e2) => aramaCubuguButon_click(aramaCubugu));
+                    
+                    Button araButon = new Button();
+                    araButon.Click += new EventHandler(this.araButon_click); 
+                    layout.Controls.Add(araButon);
+                    araButon.Text = "Ara";
+                    araButon.Width = 50;
+                    TextBox kategoriListeleTextBox = new TextBox();
+                    layout.Controls.Add(kategoriListeleTextBox);
+                    kategoriListeleTextBox.Text = "Kategori Giriniz";
+                    kategoriListeleTextBox.Click += new EventHandler((sender2, e2) => kategoriListeleTextBox_click(kategoriListeleTextBox));
+
+                    Button kategoriListeleButon = new Button();
+                    kategoriListeleButon.Click += new EventHandler((sender2, e2) => kategoriListeleButon_click(kategoriListeleTextBox));
+                    layout.Controls.Add(kategoriListeleButon);
+                    kategoriListeleButon.Width = 250;
+                    kategoriListeleButon.Text = "Kategoriye Göre Listele";
+
+                    TextBox isimListeleTextBox = new TextBox();
+                    layout.Controls.Add(isimListeleTextBox);
+                    isimListeleTextBox.Text = "Ýsim Giriniz";
+                    isimListeleTextBox.Click += new EventHandler((sender2, e2) => isimListeleTextBox_click(isimListeleTextBox));
+
+                    Button isimListeleButon = new Button();
+                    
+                    
+                    layout.Controls.Add(isimListeleButon);
+                    isimListeleButon.Width = 250;
+                    isimListeleButon.Text = "Ýsime Göre Listele";
+                    isimListeleButon.Click += new EventHandler((sender2, e2) => isimListeleButon_click(isimListeleTextBox));
+
+
+                    TextBox fiyatListeleTextBoxMin = new TextBox();
+                    layout.Controls.Add(fiyatListeleTextBoxMin);
+                    fiyatListeleTextBoxMin.Text = "Minimum fiyat";
+                    fiyatListeleTextBoxMin.Click += new EventHandler((sender2, e2) => fiyatListeleTextBoxMin_click(fiyatListeleTextBoxMin));
+
+
+                    Button fiyatListeleButon = new Button();
+                    
+                    layout.Controls.Add(fiyatListeleButon);
+                    fiyatListeleButon.Width = 250;
+                    fiyatListeleButon.Text = "Fiyat Aralýðýna Göre Listele";
+
+                    TextBox fiyatListeleTextBoxMax = new TextBox();
+                    layout.Controls.Add(fiyatListeleTextBoxMax);
+                    fiyatListeleTextBoxMax.Text = "Maximum fiyat";
+                    fiyatListeleTextBoxMax.Click += new EventHandler((sender2, e2) => fiyatListeleTextBoxMax_click(fiyatListeleTextBoxMax));
+
+                    fiyatListeleButon.Click += new EventHandler((sender2, e2) => fiyatListeleButon_click(fiyatListeleTextBoxMin, fiyatListeleTextBoxMax));
+
+                    Button isimFiyatListeleButon = new Button();
+                    isimFiyatListeleButon.Click += new EventHandler((sender2, e2) => isimFiyatListeleButon_click(fiyatListeleTextBoxMin, fiyatListeleTextBoxMax,isimListeleTextBox));
+
+                    layout.Controls.Add(isimFiyatListeleButon);
+                    isimFiyatListeleButon.Width = 250;
+                    isimFiyatListeleButon.Text = "Ýsim-Fiyata Göre Listele";
+
+                    Button sipariþVer = new Button();
+                    sipariþVer.Click += new EventHandler(sipariþVer_click);
+                    sipariþVer.Text = "Sipariþ Ver";
+                    layout.Controls.Add(sipariþVer);
+
+                    
+
+                    Button agacDengele = new Button();
+                    agacDengele.Click += new EventHandler(agacDengele_click);
+                    agacDengele.Width = 250;
+                    layout.Controls.Add(agacDengele);
+
+                    TextBox NsayýsýTextBox = new TextBox();
+                    NsayýsýTextBox.Text = "Bir sayý giriniz(N)";
+                    NsayýsýTextBox.Click += new EventHandler((sender2, e2) => NsayýsýTextBox_click(NsayýsýTextBox));
+                    NsayýsýTextBox.Width = 100;
+                    layout.Controls.Add(NsayýsýTextBox);
+
+                    TextBox heapKategori = new TextBox();
+                    heapKategori.Text = "Kategori giriniz";
+                    heapKategori.Click += new EventHandler((sender2, e2) => heapKategori_click(heapKategori));
+                    heapKategori.Width = 100;
+                    layout.Controls.Add(heapKategori);
+
+                    Button heapButton = new Button();
+                    heapButton.Click += new EventHandler((sender2, e2) => heapButtoneButon_click(NsayýsýTextBox, heapKategori));
+
+                    heapButton.Text = "En ucuz N ürün";
+                    heapButton.Width = 250;
+                    layout.Controls.Add(heapButton);
+
+                    agacDengele.Text = "Aðaç Dengele";
+
+                    müþteriEkraný.Width = 700;
+                    müþteriEkraný.Height = 400;
+                    layout.Width = 750;
+                    layout.Height = 750;
+                    müþteriEkraný.Controls.Add(layout);
+                    müþteriEkraný.Show();
+                    break;
+                }
+                else
+                {
+                    nextline = reader.ReadLine();
+                }
+
+                
+                
+            }
+            if(giriþYapýldýMý == false)
+            {
+                Form2 kullanýcýyok = new Form2();
+                Label kullanýcýyokbilgi = new Label();
+                kullanýcýyokbilgi.Width = 500;
+                kullanýcýyokbilgi.Text = "BÖYLE BÝR KULLANICI BULUNAMADI";
+                kullanýcýyok.Controls.Add(kullanýcýyokbilgi);
+                kullanýcýyok.Show();
+            }
+            reader.Close();
+        }//MÜÞTERÝ ÜYE GÝRÝÞ EKRANI
+
+        private void heapKategori_click(TextBox heapKategori)
+        {
+            heapKategori.Text = "";
+        }
+
+        
+
+        
+
+        private void heapButtoneButon_click(TextBox nsayýsýTextBox,TextBox heapKategori) //N tane en ucuz ürün heapten çekilerek kullanýcýnýn sepetine (dosyaya yazdýrýlarak) ekleniyor.
+        {
+            string girilenKategori = heapKategori.Text;
+            int girilenNsayýsý = Int32.Parse(nsayýsýTextBox.Text);
+            Heap oluþturulanHeap = heapHazýrla(kategoriler, girilenKategori);
+            List<List<string>> sýralýÜrünler = oluþturulanHeap.NtaneÜrünüSýrala(girilenNsayýsý);
+
+            List<string> kullanýcýtxt = new List<string>();
+
+            StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            string nextline = reader.ReadLine();
+            string urun = "";
+            while (nextline != null)
+            {
+                kullanýcýtxt.Add(nextline);
+                string[] kullanýcýBilgi = nextline.Split(' ');
+                if (kullanýcýBilgi.Length < 12)
+                {
+                    if (kullanýcýBilgi[0].Equals(mevcutKullanýcý))
+                    {
+                        
+                        for(int i = 0; i < sýralýÜrünler.Count; i++)
+                        {
+                            urun = "";
+                            for (int k = 0; k < sýralýÜrünler[i].Count; k++)
+                            {
+                                if (k == sýralýÜrünler[i].Count - 1)
+                                {
+                                    urun += sýralýÜrünler[i][k];
+                                }
+                                else
+                                {
+                                    urun += sýralýÜrünler[i][k] + " ";
+                                }
+                                
+                            }
+                            kullanýcýtxt.Add(urun);
+                        }
+                        
+                        
+                    }
+
+                }
+
+                nextline = reader.ReadLine();
+            }
+
+            reader.Close();
+            StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            for (int k = 0; k < kullanýcýtxt.Count; k++)
+            {
+               
+                    writer.WriteLine(kullanýcýtxt[k]);
+              
+            }
+            writer.Close();
+            Form2 eklendi = new Form2();
+            Label eklendiBilgi = new Label();
+            eklendiBilgi.Text = "En ucuz " + sýralýÜrünler.Count + " tane ürün sepetinize eklendi.";
+            eklendiBilgi.Width = 500;
+            eklendi.Width = 250;
+            eklendi.Height = 100;
+            eklendi.Controls.Add(eklendiBilgi);
+            eklendi.Show();
+        }
+    
+
+        private void kategoriListeleButon_click(TextBox kategoriListeleTextBox)
+        {
+            string girilenKategori = kategoriListeleTextBox.Text;
+            Tree agac = (Tree) kategoriler[girilenKategori];
+            List<TreeNode> postOrderNodelar = new List<TreeNode>();
+            postOrderNodelar = agac.postOrder(agac.getRoot(), postOrderNodelar);
+            
+            List<TreeNode> preOrderNodelar = new List<TreeNode>();
+            preOrderNodelar = agac.preOrder(agac.getRoot(), preOrderNodelar);
+            List<TreeNode> a = new List<TreeNode>();
+
+            agac.elemanSayýlarý = new int[Int16.MaxValue];
+            agac.inOrder(agac.getRoot(), -1, a); //agac.elemanSayýlarýný oluþturmasý için.
+
+            
+            int[] düzeydekiElemanSayýlarý = agac.elemanSayýlarý;
+            
+            
+            int maxDerinlik = agac.maxDepth;
+
+            Form2 kategoriListeleEkran = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+
+            Button inorderGoster = new Button();
+            inorderGoster.Click += new EventHandler((sender2, e2) => inorderGoster_click(agac));
+            inorderGoster.Text = "Ýnorder Sýrala";
+            inorderGoster.Width = 250;
+
+            Button preorderGoster = new Button();
+            preorderGoster.Click += new EventHandler((sender2, e2) => preorderGoster_click(agac));
+            preorderGoster.Text = "Preorder Sýrala";
+            preorderGoster.Width = 250;
+
+            Button postorderGoster = new Button();
+            postorderGoster.Click += new EventHandler((sender2, e2) => postorderGoster_click(agac));
+            postorderGoster.Text = "Postorder Sýrala";
+            postorderGoster.Width = 250;
+
+            Button elemanSayýlarýnýGoster = new Button();
+            elemanSayýlarýnýGoster.Click += new EventHandler((sender2, e2) => elemanSayýlarýnýGoster_click(agac));
+            elemanSayýlarýnýGoster.Text = "Her Düzeyde Kaç Eleman Olduðunu Göster";
+            elemanSayýlarýnýGoster.Width = 250;
+
+            Label maxderinlik = new Label();
+            maxderinlik.Width = 300;
+            maxderinlik.Text = "Maximum Derinlik:" + maxDerinlik;
+
+            layout.ColumnCount = 1;
+            layout.RowCount = 5;
+            layout.Controls.Add(inorderGoster);
+            layout.Controls.Add(preorderGoster);
+            layout.Controls.Add(postorderGoster);
+            layout.Controls.Add(elemanSayýlarýnýGoster);
+            layout.Controls.Add(maxderinlik);
+
+            layout.Width = 1000;
+            layout.Height = 700;
+            kategoriListeleEkran.Controls.Add(layout);
+            kategoriListeleEkran.Show();
+        } //MÜÞTERÝ -> KATEGORÝ YAZ -> KATEGORÝYE GÖRE LÝSTELE
+
+        private void elemanSayýlarýnýGoster_click(Tree agac)
+        {
+            Form2 elemansayýsýEkraný = new Form2();
+            Label bilgi = new Label();
+            bilgi.Text = "DÜZEY:            ";
+            Label bilgi2 = new Label();
+            bilgi2.Width = 500;
+            bilgi.Width = 500;
+            bilgi2.Text = "ELEMAN SAYISI: ";
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.ColumnCount = 1;
+            layout.RowCount = 2;
+            layout.Width = 1000;
+            for (int i = 0; i < agac.maxDepth+1; i++)
+            {
+                int düzey = i;
+                int düzeydekiElemanSayýsý = agac.elemanSayýlarý[i];
+                bilgi.Text += "   "+düzey;
+                bilgi2.Text += düzeydekiElemanSayýsý + "   ";
+
+            }
+            layout.Controls.Add(bilgi);
+            layout.Controls.Add(bilgi2);
+            elemansayýsýEkraný.Controls.Add(layout);
+            elemansayýsýEkraný.Show();
+
+        }//MÜÞTERÝ -> KATEGORÝ YAZ -> KATEGORÝYE GÖRE LÝSTELE -> HER BÝR DÜZEYDEKÝ ELEMAN SAYISI YAZDIR
+
+        //AÐAÇTAKÝ ELEMANLARI FARKLI TRAVERSAL YÖNETEMLERÝ ÝLE EKRANA YAZDIRMA
+
+        private void postorderGoster_click(Tree agac)
+        {
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Form2 postOrderekran = new Form2();
+            postOrderekran.Width = 500;
+            postOrderekran.Controls.Add(layout);
+            Label bilgi = new Label();
+            bilgi.Text = "POSTORDER SIRA: ";
+            layout.Controls.Add(bilgi);
+            layout.ColumnCount = 1;
+            List<TreeNode> postOrderNodelar = new List<TreeNode>();
+            postOrderNodelar = agac.postOrder(agac.getRoot(), postOrderNodelar);
+            Label ürünYazýsý = null;
+            string ürün = "";
+
+            int ürünSay = 0;
+            for (int i = 0; i < postOrderNodelar.Count; i++)
+            {
+
+                TreeNode node = postOrderNodelar[i];
+                for (int k = 0; k < node.data.Count; k++)
+                {
+                    List<string> data = node.data[k];
+                    ürün = "";
+                    for (int j = 0; j < data.Count; j++)
+                    {
+                        ürünSay++;
+                        ürün += data[j] + " ";
+                    }
+                    ürünYazýsý = new Label();
+                    ürünYazýsý.Width = 500;
+                    layout.Height = 1000;
+                    layout.Width = 500;
+                    ürünYazýsý.Text = ürün;
+                    layout.RowCount = ürünSay;
+                    layout.Controls.Add(ürünYazýsý);
+
+                }
+            }
+            postOrderekran.Show();
+        }
+
+        private void preorderGoster_click(Tree agac)
+        {
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Form2 preOrderekran = new Form2();
+            preOrderekran.Width = 500;
+            preOrderekran.Controls.Add(layout);
+            Label bilgi = new Label();
+            bilgi.Text = "PREORDER SIRA: ";
+            layout.Controls.Add(bilgi);
+            layout.ColumnCount = 1;
+            List<TreeNode> preOrderNodelar = new List<TreeNode>();
+            preOrderNodelar = agac.preOrder(agac.getRoot(), preOrderNodelar);
+            Label ürünYazýsý = null;
+            string ürün = "";
+
+            int ürünSay = 0;
+            for (int i = 0; i < preOrderNodelar.Count; i++)
+            {
+
+                TreeNode node = preOrderNodelar[i];
+                for (int k = 0; k < node.data.Count; k++)
+                {
+                    List<string> data = node.data[k];
+                    ürün = "";
+                    for (int j = 0; j < data.Count; j++)
+                    {
+                        ürünSay++;
+                        ürün += data[j] + " ";
+                    }
+                    ürünYazýsý = new Label();
+                    ürünYazýsý.Width = 500;
+                    layout.Height = 1000;
+                    layout.Width = 500;
+                    ürünYazýsý.Text = ürün;
+                    layout.RowCount = ürünSay;
+                    layout.Controls.Add(ürünYazýsý);
+
+                }
+            }
+
+
+            layout.RowCount = ürünSay + 1;
+            preOrderekran.Show();
+        }
+
+        private void inorderGoster_click(Tree agac)
+        {
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Form2 inorderekran = new Form2();
+            inorderekran.Width = 500;
+            
+            inorderekran.Controls.Add(layout);
+            Label bilgi = new Label();
+            bilgi.Text = "ÝNORDER SIRA: ";
+            layout.Controls.Add(bilgi);
+            layout.ColumnCount = 1;
+            List<TreeNode> inOrderNodelar = new List<TreeNode>();
+            inOrderNodelar = agac.inOrder(agac.getRoot(), -1, inOrderNodelar);
+            Label ürünYazýsý = null;
+            string ürün = "";
+            
+            int ürünSay = 0;
+            for (int i = 0; i < inOrderNodelar.Count; i++)
+            {
+
+                TreeNode node = inOrderNodelar[i];
+                for (int k = 0; k < node.data.Count; k++)
+                {
+                    List<string> data = node.data[k];
+                    ürün = "";
+                    for (int j = 0; j < data.Count; j++)
+                    {
+                        ürünSay++;
+                        ürün += data[j] + " ";
+                    }
+                    ürünYazýsý = new Label();
+                    ürünYazýsý.Width = 500;
+                    layout.Height = 1000;
+                    layout.Width = 500;
+                    ürünYazýsý.Text = ürün;
+                    layout.RowCount = ürünSay;
+                    layout.Controls.Add(ürünYazýsý);
+
+                }
+            }
+            
+            
+            layout.RowCount = ürünSay+1;
+            inorderekran.Show();
+        }
+
+        private void isimFiyatListeleButon_click(TextBox min, TextBox max, TextBox isimListeleTextBox)
+        {
+            tümÜrünListesi.Clear();
+            try//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+            {
+                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                {
+                    string nextline = sr.ReadLine();
+                    while (nextline != null)
+                    {
+                        if (kategoriler.ContainsKey(nextline))
+                        {
+
+                            nextline = sr.ReadLine();
+
+                        }
+
+                        List<string> sonrakiÜrün = new List<string>();
+                        sonrakiÜrün.Add(nextline);
+
+
+
+                        tümÜrünListesi.Add(sonrakiÜrün);
+
+
+                        nextline = sr.ReadLine();
+                    }
+
+
+                }
+            }
+            catch (Exception ee)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(ee.Message);
+            }
+            int minFiyat = Int32.Parse(min.Text);
+            int maxFiyat = Int32.Parse(max.Text);
+            List<string> isimfiyatAralýðýndakiÜrünler = new List<string>();
+            for (int i = 0; i < tümÜrünListesi.Count; i++)
+            {
+                for (int k = 0; k < tümÜrünListesi[i].Count; k++)
+                {
+                    string[] ürünOzellikleri = tümÜrünListesi[i][k].Split(' ');
+                    string stringÜrünFiyat = ürünOzellikleri[5];
+                    int ürünFiyat = Int32.Parse(stringÜrünFiyat);
+                    if (ürünFiyat < maxFiyat && ürünFiyat > minFiyat && ürünOzellikleri[0].Equals(isimListeleTextBox.Text))
+                    {
+                        isimfiyatAralýðýndakiÜrünler.Add(tümÜrünListesi[i][k]);
+
+                    }
+                }
+            }
+            Form2 ürünleriGoruntule = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Button ürün;
+
+
+
+            for (int i = 0; i < isimfiyatAralýðýndakiÜrünler.Count; i++)
+            {
+
+                ürün = new Button();
+                string[] ozellikler = isimfiyatAralýðýndakiÜrünler[i].Split(' ');
+                string text = "";
+                string fiyat = "";
+                for (int z = 0; z < ozellikler.Length; z++)
+                {
+                    if (z == 3 || z == 4)
+                    {
+                        continue;
+                    }
+                    else if (z == 5)
+                    {
+                        fiyat = ozellikler[z] + "TL ";
+
+                    }
+                    else
+                    {
+                        text += ozellikler[z] + " ";
+                    }
+
+                }
+                text += fiyat;
+                ürün.Text = text;
+                var idx = i;
+                ürün.Click += new EventHandler((sender2, e2) => satýnAl(idx, isimfiyatAralýðýndakiÜrünler));
+                ürün.Width = 750;
+                layout.Controls.Add(ürün);
+            }
+            layout.RowCount = isimfiyatAralýðýndakiÜrünler.Count;
+            layout.Width = 1000;
+            layout.Height = 1000;
+            ürünleriGoruntule.Controls.Add(layout);
+            ürünleriGoruntule.Width = 1000;
+            ürünleriGoruntule.Height = 750;
+            ürünleriGoruntule.Show();
+        } //MÜÞTERÝ -> ÝSÝM VE FÝYAT GÝRÝÞÝ -> ÝSÝME VE FÝYAT ARALIÐINA GÖRE LÝSTELE
+
+        private void isimListeleButon_click(TextBox isimListeleTextBox)//MÜÞTERÝ -> ÝSÝM GÝRÝÞÝ -> ÝSÝME  GÖRE LÝSTELE
+        {
+            string ürünÝsmi = isimListeleTextBox.Text;
+
+            tümÜrünListesi.Clear();
+            try//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+            {
+                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                {
+                    string nextline = sr.ReadLine();
+                    while (nextline != null)
+                    {
+                        if (kategoriler.ContainsKey(nextline))
+                        {
+
+                            nextline = sr.ReadLine();
+
+                        }
+
+                        List<string> sonrakiÜrün = new List<string>();
+                        sonrakiÜrün.Add(nextline);
+
+
+
+                        tümÜrünListesi.Add(sonrakiÜrün);
+
+
+                        nextline = sr.ReadLine();
+                    }
+
+
+                }
+            }
+            catch (Exception ee)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(ee.Message);
+            }
+            int count = 0;
+            List<string> ismiÝçerenÜrünler = new List<string>();
+            for (int i = 0; i < tümÜrünListesi.Count; i++)
+            {
+                for (int k = 0; k < tümÜrünListesi[i].Count; k++)
+                {
+                    string[] ürünOzellikleri = tümÜrünListesi[i][k].Split(' ');
+                    string stringÜrünFiyat = ürünOzellikleri[0];
+                    if (ürünOzellikleri[0].Equals(ürünÝsmi))
+                    {
+                        ismiÝçerenÜrünler.Add(tümÜrünListesi[i][k]);
+                        count++;
+                    }
+                }
+            }
+            Form2 ürünleriGoruntule = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Button ürün;
+
+
+
+            for (int i = 0; i < ismiÝçerenÜrünler.Count; i++)
+            {
+
+                ürün = new Button();
+                string[] ozellikler = ismiÝçerenÜrünler[i].Split(' ');
+                string text = "";
+                string fiyat = "";
+                for (int z = 0; z < ozellikler.Length; z++)
+                {
+                    if (z == 3 || z == 4)
+                    {
+                        continue;
+                    }
+                    else if (z == 5)
+                    {
+                        fiyat = ozellikler[z] + "TL ";
+
+                    }
+                    else
+                    {
+                        text += ozellikler[z] + " ";
+                    }
+
+                }
+                text += fiyat;
+                ürün.Text = text;
+                var idx = i;
+                ürün.Click += new EventHandler((sender2, e2) => satýnAl(idx, ismiÝçerenÜrünler));
+                ürün.Width = 750;
+                layout.Controls.Add(ürün);
+            }
+            if (count > 0)
+            {
+                layout.RowCount = ismiÝçerenÜrünler.Count;
+                layout.Width = 1000;
+                layout.Height = 1000;
+                ürünleriGoruntule.Controls.Add(layout);
+                ürünleriGoruntule.Width = 1000;
+                ürünleriGoruntule.Height = 750;
+                ürünleriGoruntule.Show();
+            }
+            else
+            {
+                Label bilgi = new Label();
+                bilgi.Text = "Aradýðýnýz isimde ürün mevcut deðildir.";
+                bilgi.Width = 600;
+                ürünleriGoruntule.Controls.Add(bilgi);
+                ürünleriGoruntule.Show();
+            }
+            
+
+        }
+
+        private void sipariþVer_click(object sender, EventArgs e)
+        {
+            bool sipariþVereTýklandýMý = true;
+            Form2 tümÜrünlerEkraný = new Form2();
+            Label ürünBilgi = new Label();
+            ürünBilgi.Text = "Sipariþ vermek istediðiniz ürüne týklayýnýz.";
+            ürünBilgi.Font = new Font(ürünBilgi.Font.FontFamily, ürünBilgi.Font.Size + 3f, ürünBilgi.Font.Style);
+            ürünBilgi.Width = 500;
+            
+            Button ürünSipariþButon;
+            TableLayoutPanel layout = new TableLayoutPanel();
+            tümÜrünListesi.Clear();
+            try//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+            {
+                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                {
+                    string nextline = sr.ReadLine();
+                    while (nextline != null)
+                    {
+                        if (kategoriler.ContainsKey(nextline))
+                        {
+
+                            nextline = sr.ReadLine();
+
+                        }
+
+                        List<string> sonrakiÜrün = new List<string>();
+                        sonrakiÜrün.Add(nextline);
+
+
+
+                        tümÜrünListesi.Add(sonrakiÜrün);
+
+
+                        nextline = sr.ReadLine();
+                    }
+
+
+                }
+            }
+            catch (Exception ee)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(ee.Message);
+            }
+            
+
+            int rowCount = 0;
+            layout.Controls.Add(ürünBilgi);
+            foreach (List<string> ürün in tümÜrünListesi)  //ürün listesi kadar buton oluþturuluyor.
+            {
+                string fiyat = "";
+                string text = "";
+                string[] ürünOzellikleri = ürün[0].Split(' ');
+                for (int z = 0; z < ürünOzellikleri.Length; z++)
+                {
+                    if (z == 3 || z == 4)
+                    {
+                        continue;
+                    }
+                    else if (z == 5)
+                    {
+                        fiyat = ürünOzellikleri[z] + "TL ";
+
+                    }
+                    else
+                    {
+                        text += ürünOzellikleri[z] + " ";
+                    }
+
+                }
+                text += fiyat;
+
+
+                ürünSipariþButon = new Button();
+                ürünSipariþButon.Text = ürün[0];
+                ürünSipariþButon.Width = 500;
+                ürünSipariþButon.Text = text;
+                
+                ürünSipariþButon.Width = 500;
+                var idx = rowCount;
+                ürünSipariþButon.Click += new EventHandler((sender2, e2) => sipariþiAl(idx, sipariþVereTýklandýMý));
+                rowCount++;
+                layout.Controls.Add(ürünSipariþButon);
+            }
+            layout.RowCount = rowCount+1;
+            tümÜrünlerEkraný.Controls.Add(layout);
+            layout.Width = 1000;
+            layout.Height = rowCount * 250;
+            tümÜrünlerEkraný.Width = 800;
+            tümÜrünlerEkraný.Height = rowCount * 250;
+            tümÜrünlerEkraný.Show();
+        }//MÜÞTERÝ -> BÜTÜN ÜRÜNLER ARASINDAN SÝPARÝÞ VERME
+
+        private void sipariþiAl(int idx,bool sipariþVereTýklandýMý)//MÜÞTERÝ -> GÝRÝÞ YAPILDI -> ÜRÜN SÝPARÝÞÝ AL -> TÜM ÜRÜNLER  BUTON ÞEKLÝNDE LÝSTELENDÝ HERHANGÝ BÝRÝ SEÇÝLDÝÐÝNDE BU ÇALIÞIYOR.
+        {
+            List<string> kullanýcýtxt = new List<string>();
+            List<string> bulunanÜrünler = new List<string>();
+           
+            if (sipariþVereTýklandýMý)
+            {
+                string ürün = "";
+                for (int i = 0; i < tümÜrünListesi.Count; i++)
+                {
+
+                    for (int k = 0; k < tümÜrünListesi[i].Count; k++)
+                    {
+                        if (k == tümÜrünListesi[i].Count - 1)
+                        {
+                            ürün += tümÜrünListesi[i][k];
+                        }
+                        else
+                        {
+                            ürün += tümÜrünListesi[i][k] + " ";
+                        }
+
+                    }
+
+                    bulunanÜrünler.Add(ürün);
+                    ürün = "";
+                }
+
+            }
+            else
+            {
+                string ürün = "";
+                for (int i = 0; i < arananÝçKelime.Count; i++)
+                {
+
+                    for (int k = 0; k < arananÝçKelime[i].Count; k++)
+                    {
+                        if (k == arananÝçKelime[i].Count - 1)
+                        {
+                            ürün += arananÝçKelime[i][k];
+                        }
+                        else
+                        {
+                            ürün += arananÝçKelime[i][k] + " ";
+                        }
+
+                    }
+
+                    bulunanÜrünler.Add(ürün);
+                    ürün = "";
+                }
+
+            }
+
+            string ürünOzellikleri = bulunanÜrünler[idx];
+            
+            
+            StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            string nextline = reader.ReadLine();
+            
+            while (nextline != null)
+            {
+                kullanýcýtxt.Add(nextline);
+                string[] kullanýcýBilgi = nextline.Split(' ');
+                if (kullanýcýBilgi.Length < 12)
+                {
+                    if (kullanýcýBilgi[0].Equals(mevcutKullanýcý))
+                    {
+                        
+                        kullanýcýtxt.Add(ürünOzellikleri);
+                    }
+                   
+                }
+                
+                nextline = reader.ReadLine(); 
+            }
+
+            reader.Close();
+            StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            for(int i=0;i<kullanýcýtxt.Count;i++)
+            {
+                writer.WriteLine(kullanýcýtxt[i]);
+            }
+            writer.Close();
+            Form2 eklendi = new Form2();
+            Label eklendiLabel = new Label();
+            eklendiLabel.Text = "Ürün Ekleme Ýþlemi Baþarýyla Gerçekleþtirildi!";
+            eklendiLabel.Width = 500;
+            eklendiLabel.Height = 500;
+            eklendi.Scale(1.1F, 0.4F);
+            eklendiLabel.Font = new Font(eklendiLabel.Font.FontFamily, eklendiLabel.Font.Size + 3f, eklendiLabel.Font.Style);
+            eklendi.Controls.Add(eklendiLabel);
+            eklendi.Show(); ;
+        }
+
+        private void fiyatListeleButon_click(TextBox min, TextBox max)
+        {
+            tümÜrünListesi.Clear();
+            try//BÜTÜN ÜRÜNLER LÝSTEYE ATILIYOR.
+            {
+                using (StreamReader sr = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/market.txt"))
+                {
+                    string nextline = sr.ReadLine();
+                    while (nextline != null)
+                    {
+                        if (kategoriler.ContainsKey(nextline))
+                        {
+
+                            nextline = sr.ReadLine();
+
+                        }
+
+                        List<string> sonrakiÜrün = new List<string>();
+                        sonrakiÜrün.Add(nextline);
+
+
+
+                        tümÜrünListesi.Add(sonrakiÜrün);
+
+
+                        nextline = sr.ReadLine();
+                    }
+
+
+                }
+            }
+            catch (Exception ee)
+            {
+                Console.WriteLine("The file could not be read:");
+                Console.WriteLine(ee.Message);
+            }
+            int minFiyat = Int32.Parse(min.Text);
+            int maxFiyat = Int32.Parse(max.Text);
+            List<string> fiyatAralýðýndakiÜrünler = new List<string>();
+            for (int i = 0; i < tümÜrünListesi.Count; i++)
+            {
+                for (int k = 0; k < tümÜrünListesi[i].Count; k++)
+                {
+                    string[] ürünOzellikleri = tümÜrünListesi[i][k].Split(' ');
+                    string stringÜrünFiyat = ürünOzellikleri[5];
+                    int ürünFiyat = Int32.Parse(stringÜrünFiyat);
+                    if (ürünFiyat < maxFiyat && ürünFiyat > minFiyat)
+                    {
+                        fiyatAralýðýndakiÜrünler.Add(tümÜrünListesi[i][k]);
+
+                    }
+                }
+            }
+            Form2 ürünleriGoruntule = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            Button ürün;
+
+
+
+            for (int i = 0; i < fiyatAralýðýndakiÜrünler.Count; i++)
+            {
+
+                ürün = new Button();
+                string[] ozellikler = fiyatAralýðýndakiÜrünler[i].Split(' ');
+                string text = "";
+                string fiyat = "";
+                for (int z = 0; z < ozellikler.Length; z++)
+                {
+                    if (z == 3 || z == 4)
+                    {
+                        continue;
+                    }
+                    else if (z == 5)
+                    {
+                        fiyat = ozellikler[z] + "TL ";
+
+                    }
+                    else
+                    {
+                        text += ozellikler[z] + " ";
+                    }
+
+                }
+                text += fiyat;
+                ürün.Text = text;
+                var idx = i;
+                ürün.Click += new EventHandler((sender2, e2) => satýnAl(idx, fiyatAralýðýndakiÜrünler));
+                ürün.Width = 750;
+                layout.Controls.Add(ürün);
+            }
+            layout.RowCount = fiyatAralýðýndakiÜrünler.Count;
+            layout.Width = 1000;
+            layout.Height = 1000;
+            ürünleriGoruntule.Controls.Add(layout);
+            ürünleriGoruntule.Width = 1000;
+            ürünleriGoruntule.Height = 750;
+            ürünleriGoruntule.Show();
+        }
+
+        private void satýnAl(int i, List<string> fiyatAralýðýndakiÜrünler)
+        {
+            string ürünOzellikleri = fiyatAralýðýndakiÜrünler[i];
+            List<string> kullanýcýtxt = new List<string>();
+
+            StreamReader reader = new StreamReader("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            string nextline = reader.ReadLine();
+
+            while (nextline != null)
+            {
+                kullanýcýtxt.Add(nextline);
+                string[] kullanýcýBilgi = nextline.Split(' ');
+                if (kullanýcýBilgi.Length < 12)
+                {
+                    if (kullanýcýBilgi[0].Equals(mevcutKullanýcý))
+                    {
+
+                        kullanýcýtxt.Add(ürünOzellikleri);
+                    }
+
+                }
+
+                nextline = reader.ReadLine();
+            }
+
+            reader.Close();
+            StreamWriter writer = new StreamWriter("C:/Users/oguzhan.kazakk/Desktop/kullanýcý.txt");
+            for (int k = 0; k < kullanýcýtxt.Count; k++)
+            {
+                writer.WriteLine(kullanýcýtxt[k]);
+            }
+            writer.Close();
+            Form2 eklendi = new Form2();
+            Label eklendiLabel = new Label();
+            eklendiLabel.Text = "Ürün Ekleme Ýþlemi Baþarýyla Gerçekleþtirildi!";
+            eklendiLabel.Width = 500;
+            eklendiLabel.Height = 500;
+            eklendi.Scale(1.1F, 0.4F);
+            eklendiLabel.Font = new Font(eklendiLabel.Font.FontFamily, eklendiLabel.Font.Size + 3f, eklendiLabel.Font.Style);
+            eklendi.Controls.Add(eklendiLabel);
+            eklendi.Show(); ;
+        }
+
+        private void agacDengele_click(object sender, EventArgs e)
+        {
+            List<TreeNode> Nodes = new List<TreeNode>();
+            foreach (Tree agac in kategoriler.Values)
+            {
+                Nodes.Clear();
+                agac.toStack(agac.getRoot(),Nodes);
+                agacDengele(0, Nodes.Count, agac, Nodes);
+            }
+        }
+       
+
+        
+    
+
+       
+
+        
+
+        private void araButon_click(object sender, EventArgs e) //MÜÞERÝ GÝRÝÞÝ -> ARA BUTONU  
+        {
+            int rowCount = 0;
+            Form2 bulunanÜrünEkraný = null;
+            List<string> anahtarKelimeler = null;
+            List<List<String>> arananUrun = null;
+            arananÝçKelime = new List<List<string>>();
+            string aranan = aramaCubugu.Text;
+            anahtarKelimeler = new List<string>();
+            foreach (string anahtar in urunAcýklamasý.Keys)
+            {
+                
+                anahtarKelimeler.Add(anahtar);
+            }
+            for(int o = 0; o < anahtarKelimeler.Count; o++)
+            {
+                 if(anahtarKelimeler[o].Contains(aranan)) 
+                {
+     
+                    rowCount++;
+                    TableLayoutPanel layout = new TableLayoutPanel();
+                    
+                    arananUrun = (List<List<String>>)urunAcýklamasý[anahtarKelimeler[o]];
+
+                    
+
+
+                    for (int k = 0; k < arananUrun.Count; k++)
+                    {
+                        if (!arananÝçKelime.Contains(arananUrun[k]))
+                        {
+                            arananÝçKelime.Add(arananUrun[k]);
+                            bulunanÜrünler.Add(arananUrun[k]);
+                        }
+            
+                    }
+                    bulunanÜrünEkraný = new Form2();
+                    Label ürünBilgi = new Label();
+                    ürünBilgi.Width = 600;
+                    ürünBilgi.Text = "Sepete Eklemek Ýstediðiniz Ürüne Týklayýn.";
+                    bulunanÜrünEkraný.Width = 750;
+                    layout.ColumnCount = 1;
+                    layout.RowCount = rowCount;
+                    layout.Dock = DockStyle.Fill;
+                    bulunanÜrünEkraný.Controls.Add(layout);
+                    Button sepeteEkle;
+
+                    
+
+                    for (int i = 0; i < arananÝçKelime.Count; i++)
+                    {
+                        string fiyat = "";
+                        string text = "";
+                        var idx = i;
+                        List<String> stringListe;
+                        stringListe = arananÝçKelime[i];
+                        sepeteEkle = new Button();
+                        sepeteEkle.Click += new EventHandler((sender2, e2) => sipariþiAl(idx,false));
+
+
+
+                        sepeteEkle.Width = 700;
+                        for (int z = 0; z < arananÝçKelime[i].Count; z++)
+                        {
+                            if (z == 3 || z == 4)
+                            {
+                                continue;
+                            }
+                            else if (z == 5)
+                            {
+                                fiyat = stringListe[z] + "TL ";
+
+                            }
+                            else
+                            {
+                                text += stringListe[z] + " ";
+                            }
+
+                        }
+                        text += fiyat;
+                        sepeteEkle.Text = text;
+                        
+                        layout.Controls.Add(ürünBilgi, 0, 0);
+                        layout.Controls.Add(sepeteEkle, 0, i + 1);
+
+                    }
+                }
+
+            
+               
+            }
+            if(bulunanÜrünEkraný != null)
+                bulunanÜrünEkraný.Show();
+            else
+            {
+                Form2 dikkat = new Form2();
+                Label uyarý = new Label();
+                uyarý.Scale(2F, 2F);
+                uyarý.Text = "ARADIÐINIZ ÜRÜN BULUNAMADI";
+                dikkat.Controls.Add(uyarý);
+                dikkat.Show();
+            }
+        }
+
+        private void button4_Click(object sender, EventArgs e) //KAYDOL
+        {
+            Form2 kayýtEkraný = new Form2();
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.ColumnCount = 1;
+            layout.RowCount = 7;
+
+            layout.Width = 600;
+            layout.Height = 800;
+
+            kayýtEkraný.Scale(1.2F,0.7F);
+
+            Button kaydol = new Button();
+            kaydol.Text = "Kaydol";
+            kaydol.Click += new EventHandler(this.kaydol_click);
+
+            kullanýcýAdý = new TextBox();
+            kullanýcýAdý.Text = "Kullanýcý Adý Gir";
+            kullanýcýAdý.ForeColor = System.Drawing.Color.Gray;
+            kullanýcýAdý.Click += new EventHandler(this.kullanýcýAdý_click);
+
+            þifre = new TextBox();
+            þifre.Text = "Þifre Gir";
+            þifre.ForeColor = System.Drawing.Color.Gray;
+            þifre.Click += new EventHandler(this.þifre_click);
+
+            yaþ = new TextBox();
+            yaþ.Text = "Yaþýnýzý Giriniz";
+            yaþ.ForeColor = System.Drawing.Color.Gray;
+            yaþ.Click += new EventHandler(this.yaþ_click);
+
+            maaþ = new TextBox();
+            maaþ.Text = "Maaþýnýzý Giriniz";
+            maaþ.ForeColor = System.Drawing.Color.Gray;
+            maaþ.Click += new EventHandler(this.maaþ_click);
+
+            cinsiyet = new TextBox();
+            cinsiyet.Text = "Cinsiyetinizi Giriniz (kadýn/erkek)";
+            cinsiyet.ForeColor = System.Drawing.Color.Gray;
+            cinsiyet.Click += new EventHandler(this.cinsiyet_click);
+
+            þehir = new TextBox();
+            þehir.Text = "Yaþadýðýnýz þehri giriniz.";
+            þehir.ForeColor = System.Drawing.Color.Gray;
+            þehir.Click += new EventHandler(this.þehir_click);
+
+
+            kullanýcýAdý.Width = 250;
+            þifre.Width = 250;
+            yaþ.Width = 250;
+            maaþ.Width = 250;
+            cinsiyet.Width = 250;
+            þehir.Width = 250;
+
+            layout.Controls.Add(kullanýcýAdý);
+            layout.Controls.Add(þifre);
+            layout.Controls.Add(yaþ);
+            layout.Controls.Add(maaþ);
+            layout.Controls.Add(cinsiyet);
+            layout.Controls.Add(þehir);
+            layout.Controls.Add(kaydol);
+            kayýtEkraný.Controls.Add(layout);
+            kayýtEkraný.Show();
+        }
+
+        private void kaydol_click(object sender, EventArgs e)
+        {
+            List<string> kullanýcýOzellikleri = new List<string>();
+            //DOSAYAYA YAZDIRMA ÝÞLEMLERÝ
+            kullanýcýOzellikleri.Add(kullanýcýAdý.Text);
+            kullanýcýOzellikleri.Add(þifre.Text);
+            kullanýcýOzellikleri.Add(yaþ.Text);
+            kullanýcýOzellikleri.Add(maaþ.Text);
+            kullanýcýOzellikleri.Add(cinsiyet.Text);
+            kullanýcýOzellikleri.Add(þehir.Text);
+            dosyayaYaz(kullanýcýOzellikleri);
+            
+
+        }
+    }
+    
+    }
+
+
+public class Node
+{
+    public List<String> iData;             // data item (key)
+                                   // -------------------------------------------------------------
+    public Node(List<String> key)           // constructor
+    { iData = key; }
+    // -------------------------------------------------------------
+    public List<String> getKey()
+    { return iData; }
+    // -------------------------------------------------------------
+    public void setKey(List<String> id)
+    { iData = id; }
+    // -------------------------------------------------------------
+}  // end class Node
+////////////////////////////////////////////////////////////////
+public class Heap
+{
+    private Node[] heapArray;
+    private int maxSize;           // size of array
+    private int currentSize;       // number of nodes in array
+                                   // -------------------------------------------------------------
+    public Heap(int mx)            // constructor
+    {
+        maxSize = mx;
+        currentSize = 0;
+        heapArray = new Node[maxSize];  // create array
+    }
+    // -------------------------------------------------------------
+    public bool isEmpty()
+    { return currentSize == 0; }
+    // -------------------------------------------------------------
+    public bool insert(List<String> key) //SIRALI ATIYOR
+    {
+        if (currentSize == maxSize)
+            return false;
+        Node newNode = new Node(key);
+        heapArray[currentSize] = newNode;
+        trickleUp(currentSize++);
+        return true;
+    }  // end insert()
+       // -------------------------------------------------------------
+    public void trickleUp(int index)
+    {
+        int parent = (index - 1) / 2;
+        Node bottom = heapArray[index];
+
+        List<String> temp = heapArray[parent].getKey();
+        List<String> temp2 = bottom.getKey();
+
+        int fiyat = Int32.Parse(temp[5]);
+        int fiyat2 = Int32.Parse(temp2[5]);
+        
+        while (index > 0 && fiyat > fiyat2) 
+        {
+            heapArray[index] = heapArray[parent];  // move it down
+            temp2 = heapArray[index].getKey();
+            fiyat2 = Int32.Parse(temp2[5]);
+            index = parent;
+            parent = (parent - 1) / 2;
+        }  // end while
+        heapArray[index] = bottom;
+    }  // end trickleUp()
+       // -------------------------------------------------------------
+   
+        public void displayHeap()
+    {
+        Console.Write("heapArray: ");    // array format
+        for (int m = 0; m < currentSize; m++)
+            if (heapArray[m] != null)
+                Console.Write(heapArray[m].getKey() + " ");
+         else
+            Console.Write("-- ");
+        Console.WriteLine();
+        // heap format
+        int nBlanks = 32;
+        int itemsPerRow = 1;
+        int column = 0;
+        int j = 0;                          // current item
+        String dots = "...............................";
+        Console.WriteLine(dots + dots);      // dotted top line
+
+        while (currentSize > 0)              // for each heap item
+        {
+            if (column == 0)                  // first item in row?
+                for (int k = 0; k < nBlanks; k++)  // preceding blanks
+                    Console.Write(' ');
+            // display item
+            Console.Write(heapArray[j].getKey());
+
+            if (++j == currentSize)           // done?
+                break;
+
+            if (++column == itemsPerRow)        // end of row?
+            {
+                nBlanks /= 2;                 // half the blanks
+                itemsPerRow *= 2;             // twice the items
+                column = 0;                   // start over on
+                Console.WriteLine();         //    new row
+            }
+            else                             // next item on row
+                for (int k = 0; k < nBlanks * 2 - 2; k++)
+                    Console.Write(' ');     // interim blanks
+        }  // end for
+        Console.WriteLine("\n" + dots + dots); // dotted bottom line
+    }  // end displayHeap()
+       // -------------------------------------------------------------
+        public List<List<string>> NtaneÜrünüSýrala(int n)
+    {
+        List<List<string>> heapData = new List<List<string>>();
+        for(int i = 0; i < n; i++)
+        {
+            heapData.Add(heapArray[i].iData);
+        }
+        return heapData;
+    }
+}  // end class Heap
+
+
+
+class TreeNode
+    {
+        public List<List<String>> data;
+        public TreeNode leftChild;
+        public TreeNode rightChild;
+        public TreeNode displayNode() { return this; }
+    }
+
+    // Agaç Sýnýfý
+    class Tree
+    {
+     private TreeNode root;
+        public int sayi = 0;
+        public int düzey;
+    public int[] elemanSayýlarý = new int[Int16.MaxValue];
+    public int maxDepth = 0;
+        public List<int> elemanSayýlarýToplamlarý = new List<int>();
+        
+
+    public Tree() { root = null; }
+
+        public TreeNode getRoot()
+        { return root; }
+
+        // Agacýn preOrder Dolasýlmasý
+        
+        public List<TreeNode> preOrder(TreeNode localRoot, List<TreeNode> nodelar)
+        {
+            if (localRoot != null)
+            {
+                TreeNode a = localRoot.displayNode();
+                nodelar.Add(a);
+                preOrder(localRoot.leftChild,nodelar);
+                preOrder(localRoot.rightChild,nodelar);
+                
+            }
+        return nodelar;
+        }
+    public List<TreeNode> düzeyListele(TreeNode etkin,List<TreeNode> nodelar)
+    {
+        if (etkin != null)
+        {
+            düzey = düzey + 1;
+            düzeyListele(etkin.leftChild, nodelar);
+            TreeNode a = etkin.displayNode();
+            düzeyListele(etkin.rightChild, nodelar);
+            düzey = düzey - 1;
+        }
+        return nodelar;
+    }
+    
+    public void toStack(TreeNode localRoot, List<TreeNode> list)
+        {
+            if (localRoot != null) {
+            toStack(localRoot.leftChild, list);
+            list.Add(localRoot);
+            toStack(localRoot.rightChild, list);
+
+            }
+
+        }
+
+    // Agacýn inOrder Dolasýlmasý
+    public List<TreeNode> inOrder(TreeNode localRoot, int düzey, List<TreeNode> nodelar)
+    {
+
+        if (localRoot != null)
+        {
+            düzey++;
+            inOrder(localRoot.leftChild, düzey,nodelar);
+            elemanSayýlarý[düzey]++;
+            if (düzey > maxDepth)
+                maxDepth = düzey;
+            TreeNode a = localRoot.displayNode();
+            nodelar.Add(a);
+            inOrder(localRoot.rightChild, düzey,nodelar);
+            
+        }
+        return nodelar;
+    }
+   
+
+    
+    // Agacýn postOrder Dolasýlmasý
+    public List<TreeNode> postOrder(TreeNode localRoot,List<TreeNode> nodelar )
+    {
+            if (localRoot != null)
+            {
+                postOrder(localRoot.leftChild, nodelar);
+                postOrder(localRoot.rightChild, nodelar);
+                TreeNode a =localRoot.displayNode();
+                nodelar.Add(a);
+            }
+        return nodelar;
+        }
+
+        // Agaca bir dügüm eklemeyi saglayan metot
+        public void insert(List<List<String>> newdata)
+        {
+            TreeNode newNode = new TreeNode();
+            newNode.data = newdata;
+            if (root == null) { 
+                root = newNode;
+               
+        }
+        else
+            {
+                TreeNode current = root;
+                TreeNode parent;
+                while (true)
+                {
+                    parent = current;
+                    List<String> temp = newdata[0]; //dýþarýdan gelen listenin içindeki ilk liste
+                    List<String> temp2 = current.data[0]; // node'daki dýþ listenin içindeki ilk liste
+                    if (temp[0].CompareTo(temp2[0]) < 0)
+                    {
+                        current = current.leftChild;
+                        if (current == null)
+                        {
+                            
+                            parent.leftChild = newNode;
+                        
+                        return;
+                        }
+                    }
+                    else
+                    {
+                        current = current.rightChild;
+                        if (current == null)
+                        {
+                            parent.rightChild = newNode;
+                            
+                        return;
+                        }
+                    }
+                } // end while
+            } // end else not root
+        
+
+        } // end insert()
+
+       
+    }
+
+
+
